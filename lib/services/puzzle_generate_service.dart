@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
+import '/models/puzzle_piece.dart';
 
 class PuzzleGenerateService {
   // 根据难度生成拼图碎片
@@ -60,30 +61,5 @@ class PuzzleGenerateService {
     // 3. 为每个碎片分配正确的索引
 
     return pieces;
-  }
-}
-
-// 拼图碎片类
-class PuzzlePiece {
-  final ui.Image image;        // 碎片图像
-  final int originalIndex;     // 原始位置索引
-  final int currentIndex;      // 当前位置索引
-  final Offset originalPosition; // 原始位置坐标
-
-  PuzzlePiece({
-    required this.image,
-    required this.originalIndex,
-    required this.currentIndex,
-    required this.originalPosition,
-  });
-
-  // 创建一个新的拼图碎片，更新当前索引
-  PuzzlePiece copyWith({int? newCurrentIndex}) {
-    return PuzzlePiece(
-      image: image,
-      originalIndex: originalIndex,
-      currentIndex: newCurrentIndex ?? currentIndex,
-      originalPosition: originalPosition,
-    );
   }
 }

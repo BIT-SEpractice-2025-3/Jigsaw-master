@@ -1,7 +1,6 @@
 //游戏服务
 import 'dart:async';
-import 'puzzle_generate_service.dart';
-
+import '/models/puzzle_piece.dart';
 // 游戏状态枚举
 enum GameStatus {
   notStarted,  // 未开始
