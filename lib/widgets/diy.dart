@@ -1,9 +1,13 @@
 //自定义拼图界面
 //->主页
+//临时禁用预览按钮防止崩溃，等待拼图算法完成
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
 import 'dart:io'; // 导入IO库，用于处理文件
 import 'home.dart';
+import 'puzzle.dart';
+import '../services/puzzle_generate_service.dart';
+import '../models/puzzle_piece.dart';
 
 class DiyPage extends StatefulWidget {
   const DiyPage({super.key});
@@ -17,6 +21,7 @@ class _DiyPageState extends State<DiyPage> {
   final ImagePicker _picker = ImagePicker();
   bool _showPreview = false;
   int _gridSize = 3; // 默认3x3网格
+  List<PuzzlePiece>? _previewPieces; // 用于存储预览拼图块
 
   @override
   Widget build(BuildContext context) {
@@ -91,16 +96,16 @@ class _DiyPageState extends State<DiyPage> {
               backgroundColor: Colors.green,
             ),
           );
-          // 这里可以跳转到拼图游戏页面，并传入图片和网格大小
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(
-          //     builder: (context) => PuzzlePage(
-          //       image: _selectedImage!,
-          //       gridSize: _gridSize,
-          //     ),
-          //   ),
-          // );
+          // 跳转到拼图游戏页面，并传入图片和网格大小
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PuzzlePage(
+                imagePath: _selectedImage!.path,
+                difficulty: _mapGridSizeToDifficulty(_gridSize),
+              ),
+            ),
+          );
         }
       },
       icon: const Icon(Icons.play_arrow),
@@ -151,10 +156,27 @@ class _DiyPageState extends State<DiyPage> {
   }
 
   // 显示拼图预览
-  void _togglePreview() {
-    setState(() {
-      _showPreview = !_showPreview;
-    });
+  void _togglePreview() async {
+    if (!_showPreview) {
+      // 如果要显示预览，先生成拼图块
+      if (_selectedImage != null) {
+        // 调用拼图生成函数
+        final generator = PuzzleGenerateService();
+        final pieces = await generator.generatePuzzle(
+          _selectedImage!.path,
+          _mapGridSizeToDifficulty(_gridSize),
+        );
+        setState(() {
+          _previewPieces = pieces;
+          _showPreview = true;
+        });
+      }
+    } else {
+      // 如果要隐藏预览，直接更新状态
+      setState(() {
+        _showPreview = false;
+      });
+    }
   }
 
   // 获取难度文本
@@ -171,13 +193,29 @@ class _DiyPageState extends State<DiyPage> {
     }
   }
 
+  // 将网格大小映射到难度等级
+  int _mapGridSizeToDifficulty(int gridSize) {
+    switch (gridSize) {
+      case 3:
+        return 1; // 简单
+      case 4:
+        return 2; // 中等
+      case 5:
+        return 3; // 困难
+      default:
+        return 1; // 默认为简单
+    }
+  }
+
   // 调整网格大小
   void _updateGridSize(int size) {
     setState(() {
       _gridSize = size;
+      // 如果当前正在显示预览，则需要重新生成拼图块
       if (_showPreview) {
-        // 如果正在预览，更新预览
-        _showPreview = true;
+        // 先隐藏，再重新生成并显示
+        _showPreview = false;
+        _togglePreview();
       }
     });
   }
@@ -197,6 +235,9 @@ class _DiyPageState extends State<DiyPage> {
 
   // 构建拼图预览
   Widget _buildPuzzlePreview() {
+    if (_previewPieces == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -207,27 +248,8 @@ class _DiyPageState extends State<DiyPage> {
       ),
       itemCount: _gridSize * _gridSize,
       itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white, width: 1),
-          ),
-          child: ClipRect(
-            child: FractionalTranslation(
-              translation: Offset(
-                -(index % _gridSize) / (_gridSize - 1),
-                -(index ~/ _gridSize) / (_gridSize - 1),
-              ),
-              child: SizedBox(
-                width: 250.0 * _gridSize,
-                height: 250.0 * _gridSize,
-                child: Image.file(
-                  _selectedImage!,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-        );
+        final piece = _previewPieces![index];
+        return RawImage(image: piece.image);
       },
     );
   }
@@ -250,7 +272,8 @@ class _DiyPageState extends State<DiyPage> {
   // 构建预览切换按钮
   Widget _buildPreviewToggleButton() {
     return OutlinedButton.icon(
-      onPressed: _togglePreview,
+      onPressed: null, // 临时禁用按钮，因为拼图切割算法还未完成
+      // onPressed: _togglePreview,
       icon: Icon(_showPreview ? Icons.visibility_off : Icons.visibility),
       label: Text(_showPreview ? '隐藏预览' : '显示预览'),
       style: OutlinedButton.styleFrom(
