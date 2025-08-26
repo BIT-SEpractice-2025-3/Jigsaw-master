@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import 'puzzle.dart';
-import 'home.dart';
 
 class GameSelectionPage extends StatelessWidget {
   const GameSelectionPage({super.key});
