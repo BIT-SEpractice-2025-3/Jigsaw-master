@@ -20,8 +20,8 @@ class PuzzleApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      // home: const HomePage(),  // 首页
-      home: const TestPage(),  // 使用测试页作为启动页面
+      home: const HomePage(),  // 首页
+      // home: const TestPage(),  // 使用测试页作为启动页面
     );
   }
 }
