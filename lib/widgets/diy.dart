@@ -1,6 +1,6 @@
 //自定义拼图界面
 //->主页
-//->开始游戏页面
+//临时禁用预览按钮防止崩溃，等待拼图算法完成
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
 import 'dart:io'; // 导入IO库，用于处理文件
@@ -10,8 +10,6 @@ import 'home.dart';
 import 'puzzle.dart';
 import '../services/puzzle_generate_service.dart';
 import '../models/puzzle_piece.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart' show rootBundle;
 
 class DiyPage extends StatefulWidget {
   const DiyPage({super.key});
@@ -27,7 +25,6 @@ class _DiyPageState extends State<DiyPage> {
   int _gridSize = 3; // 默认3x3网格
   List<PuzzlePiece>? _previewPieces; // 用于存储预览拼图块
   String? _savedImagePath; // 保存的图片路径
-  bool _isGeneratingPreview = false;
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +36,8 @@ class _DiyPageState extends State<DiyPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 预览图片（如果有已选择或已保存的图片）
-            if (_selectedImage != null || _savedImagePath != null)
-              _buildImagePreviewSection(),
+            // 预览图片
+            if (_selectedImage != null) _buildImagePreviewSection(),
             // 图片选择按钮
             _buildImageSelectionButton(),
             // 开始游戏按钮
@@ -73,21 +69,10 @@ class _DiyPageState extends State<DiyPage> {
               ? _buildPuzzlePreview()
               : ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Builder(builder: (context) {
-                    // 优先显示 _selectedImage；否则显示 _savedImagePath（支持 assets 或 文件路径）
-                    if (_selectedImage != null) {
-                      return Image.file(_selectedImage!, fit: BoxFit.fill);
-                    }
-                    if (_savedImagePath != null) {
-                      if (_savedImagePath!.startsWith('assets/')) {
-                        return Image.asset(_savedImagePath!, fit: BoxFit.fill);
-                      } else {
-                        return Image.file(File(_savedImagePath!),
-                            fit: BoxFit.fill);
-                      }
-                    }
-                    return const SizedBox.shrink();
-                  }),
+                  child: Image.file(
+                    _selectedImage!,
+                    fit: BoxFit.cover,
+                  ),
                 ),
         ),
         const SizedBox(height: 15),
@@ -107,7 +92,7 @@ class _DiyPageState extends State<DiyPage> {
   // 构建开始拼图按钮
   Widget _buildStartPuzzleButton(BuildContext context) {
     return ElevatedButton.icon(
-      onPressed: _selectedImage != null || _savedImagePath != null
+      onPressed: _selectedImage != null
           ? () async {
               // 这里将来实现开始拼图的逻辑
               ScaffoldMessenger.of(context).showSnackBar(
@@ -298,52 +283,22 @@ class _DiyPageState extends State<DiyPage> {
 
   // 显示拼图预览
   void _togglePreview() async {
-    // 避免重复点击
-    if (_isGeneratingPreview) return;
-
-    // 决定使用哪个图片路径：优先使用已保存路径，否则使用临时选择的图片
-    final imagePath = _savedImagePath ?? _selectedImage?.path;
-    if (imagePath == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('请先选择或导入图片'), backgroundColor: Colors.red),
-        );
-      }
-      return;
-    }
-
     if (!_showPreview) {
-      setState(() {
-        _isGeneratingPreview = true;
-      });
-      try {
+      // 如果要显示预览，先生成拼图块
+      if (_selectedImage != null) {
+        // 调用拼图生成函数
         final generator = PuzzleGenerateService();
         final pieces = await generator.generatePuzzle(
-          imagePath,
+          _selectedImage!.path,
           _mapGridSizeToDifficulty(_gridSize),
         );
-        if (mounted) {
-          setState(() {
-            _previewPieces = pieces;
-            _showPreview = true;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('生成预览失败: $e'), backgroundColor: Colors.red),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isGeneratingPreview = false;
-          });
-        }
+        setState(() {
+          _previewPieces = pieces;
+          _showPreview = true;
+        });
       }
     } else {
-      // 隐藏预览
+      // 如果要隐藏预览，直接更新状态
       setState(() {
         _showPreview = false;
       });
@@ -412,7 +367,6 @@ class _DiyPageState extends State<DiyPage> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      clipBehavior: Clip.hardEdge,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: _gridSize,
         mainAxisSpacing: 2,
@@ -421,29 +375,7 @@ class _DiyPageState extends State<DiyPage> {
       itemCount: _gridSize * _gridSize,
       itemBuilder: (context, index) {
         final piece = _previewPieces![index];
-        // 将 ui.Image 等比缩放/裁切到单元格内，避免原始图片尺寸导致溢出和重叠。
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return ClipRRect(
-              borderRadius: BorderRadius.zero,
-              child: SizedBox(
-                width: constraints.maxWidth,
-                height: constraints.maxHeight,
-                child: ClipRect(
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: piece.image.width.toDouble(),
-                      height: piece.image.height.toDouble(),
-                      child: RawImage(image: piece.image),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
+        return RawImage(image: piece.image);
       },
     );
   }
@@ -465,9 +397,10 @@ class _DiyPageState extends State<DiyPage> {
 
   // 构建预览切换按钮
   Widget _buildPreviewToggleButton() {
-    final hasImage = _selectedImage != null || _savedImagePath != null;
     return OutlinedButton.icon(
-      onPressed: hasImage && !_isGeneratingPreview ? _togglePreview : null,
+      onPressed: null, // 临时禁用按钮，因为拼图切割算法还未完成
+      // onPressed: _togglePreview,
+      icon: Icon(_showPreview ? Icons.visibility_off : Icons.visibility),
       label: Text(_showPreview ? '隐藏预览' : '显示预览'),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.purple,
@@ -493,24 +426,13 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
-  // 构建导入/导出配置按钮组
-  Widget _buildImportButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _importConfig,
-          icon: const Icon(Icons.download),
-          label: const Text('导入配置'),
-        ),
-      ],
-    );
-  }
-
   // 构建图片选择按钮
   Widget _buildImageSelectionButton() {
     return Column(
       children: [
+        const Text("选择一张图片开始拼图",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 50),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -525,139 +447,9 @@ class _DiyPageState extends State<DiyPage> {
                 foregroundColor: Colors.white,
               ),
             ),
-            const SizedBox(width: 12),
-            // 导入按钮
-            _buildImportButtons(),
           ],
         ),
       ],
     );
-  }
-
-  // 导入配置
-  Future<void> _importConfig() async {
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: '选择要导入的配置文件',
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-
-    if (result == null || result.files.isEmpty) return;
-
-    final pathStr = result.files.first.path;
-    if (pathStr == null) return;
-    try {
-      final content = await File(pathStr).readAsString();
-      final data = json.decode(content);
-
-      if (data is! Map || !data.containsKey('gridSize')) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('配置文件格式不正确'), backgroundColor: Colors.red),
-          );
-        }
-        return;
-      }
-
-      final importedGridSize = (data['gridSize'] is int)
-          ? data['gridSize']
-          : int.parse(data['gridSize'].toString());
-      final importedImagePath = data['imagePath'] as String?;
-
-      // 验证图片存在性（如果有 imagePath）
-      bool imageExists = true;
-      if (importedImagePath != null && importedImagePath.isNotEmpty) {
-        if (importedImagePath.startsWith('assets/')) {
-          // 首先检查项目目录下是否有该文件（例如刚刚保存到 assets/images/diyImages）
-          final candidate =
-              File(path.join(Directory.current.path, importedImagePath));
-          if (await candidate.exists()) {
-            imageExists = true;
-            // 将 importedImagePath 替换为磁盘绝对路径，便于立即显示
-          } else {
-            // 如果磁盘不存在，再尝试 rootBundle（只有打包或重启后 asset 可用）
-            try {
-              await rootBundle.load(importedImagePath);
-              imageExists = true;
-            } catch (e) {
-              imageExists = false;
-            }
-          }
-        } else {
-          final f = File(importedImagePath);
-          imageExists = await f.exists();
-        }
-      }
-
-      if (!imageExists) {
-        if (mounted) {
-          final pick = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('图片未找到'),
-              content: const Text('配置中引用的图片不存在，是否现在从相册选择图片以完成导入？'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('取消'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('选择图片'),
-                ),
-              ],
-            ),
-          );
-          if (pick == true) {
-            await _pickImage();
-          }
-        }
-        return; // 不更新状态，等待用户操作
-      }
-
-      // 更新状态并刷新UI
-      setState(() {
-        _gridSize = importedGridSize;
-        if (importedImagePath != null && importedImagePath.isNotEmpty) {
-          if (importedImagePath.startsWith('assets/')) {
-            // 优先使用磁盘上的同名文件（如果存在），否则保留 assets 路径
-            final candidatePath =
-                path.join(Directory.current.path, importedImagePath);
-            final candidate = File(candidatePath);
-            if (candidate.existsSync()) {
-              _selectedImage = candidate;
-              _savedImagePath = null;
-            } else {
-              // 运行时不可访问的 assets，仅在下次重启或打包后可用
-              _savedImagePath = importedImagePath;
-              _selectedImage = null;
-            }
-          } else {
-            final f = File(importedImagePath);
-            if (f.existsSync()) {
-              _selectedImage = f;
-              _savedImagePath = null;
-            } else {
-              _savedImagePath = importedImagePath;
-              _selectedImage = null;
-            }
-          }
-        }
-        _showPreview = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('导入成功'), backgroundColor: Colors.green),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入失败: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
   }
 }
