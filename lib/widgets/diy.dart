@@ -4,6 +4,8 @@
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
 import 'dart:io'; // 导入IO库，用于处理文件
+import 'dart:convert'; // 导入JSON处理库
+import 'package:path/path.dart' as path; // 导入路径处理库
 import 'home.dart';
 import 'puzzle.dart';
 import '../services/puzzle_generate_service.dart';
@@ -22,6 +24,7 @@ class _DiyPageState extends State<DiyPage> {
   bool _showPreview = false;
   int _gridSize = 3; // 默认3x3网格
   List<PuzzlePiece>? _previewPieces; // 用于存储预览拼图块
+  String? _savedImagePath; // 保存的图片路径
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +41,7 @@ class _DiyPageState extends State<DiyPage> {
             // 图片选择按钮
             _buildImageSelectionButton(),
             // 开始游戏按钮
-            if (_selectedImage != null) ...[
+            if (_selectedImage != null || _savedImagePath != null) ...[
               const SizedBox(height: 20),
               _buildStartPuzzleButton(context),
             ],
@@ -78,6 +81,9 @@ class _DiyPageState extends State<DiyPage> {
         const SizedBox(height: 15),
         // 预览切换按钮
         _buildPreviewToggleButton(),
+        const SizedBox(height: 15),
+        // 保存按钮
+        _buildSaveButton(),
         const SizedBox(height: 20),
       ],
     );
@@ -86,34 +92,38 @@ class _DiyPageState extends State<DiyPage> {
   // 构建开始拼图按钮
   Widget _buildStartPuzzleButton(BuildContext context) {
     return ElevatedButton.icon(
-      onPressed: () {
-        if (_selectedImage != null) {
-          // 这里将来实现开始拼图的逻辑
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  '开始${_gridSize}x${_gridSize}拼图，难度：${_getDifficultyText()}'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // 跳转到拼图游戏页面，并传入图片和网格大小
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PuzzlePage(
-                imagePath: _selectedImage!.path,
-                difficulty: _mapGridSizeToDifficulty(_gridSize),
-              ),
-            ),
-          );
-        }
-      },
+      onPressed: _selectedImage != null
+          ? () async {
+              // 这里将来实现开始拼图的逻辑
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+
+              // 跳转到拼图游戏页面，优先使用保存的路径，否则使用临时路径
+              final imagePath = _savedImagePath ?? _selectedImage!.path;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PuzzlePage(
+                    imagePath: imagePath,
+                    difficulty: _mapGridSizeToDifficulty(_gridSize),
+                  ),
+                ),
+              );
+            }
+          : null,
       icon: const Icon(Icons.play_arrow),
       label: const Text('开始拼图', style: TextStyle(fontSize: 18)),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-        backgroundColor: Colors.orange,
+        backgroundColor: _selectedImage != null ? Colors.orange : Colors.grey,
         foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.grey.shade400,
+        disabledForegroundColor: Colors.white,
       ),
     );
   }
@@ -144,14 +154,130 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
-  // 从相册选择图片
+  // 从相册选择图片（仅选择，不自动保存）
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() {
         _selectedImage = File(image.path);
+        _savedImagePath = null; // 重置保存路径
         _showPreview = false;
       });
+
+      // 显示图片选择成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('图片已选择，点击保存按钮进行保存'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    }
+  }
+
+  // 手动保存图片和创建配置文件
+  Future<void> _saveImageAndConfig() async {
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('请先选择一张图片'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 保存图片到assets/images/diyImages目录
+      final savedPath = await _saveImageToAssets(_selectedImage!);
+
+      setState(() {
+        _savedImagePath = savedPath;
+      });
+
+      // 创建配置文件
+      await _createConfigFile();
+
+      // 显示保存成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('图片和配置已保存\n图片路径: $savedPath'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // 显示保存失败提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 保存图片到assets/images/diyImages目录
+  Future<String> _saveImageToAssets(File sourceFile) async {
+    // 获取当前时间戳作为文件名
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final extension = path.extension(sourceFile.path);
+    final fileName = 'diy_image_$timestamp$extension';
+
+    // 创建目标路径
+    final assetsDir = Directory('assets/images/diyImages');
+    if (!await assetsDir.exists()) {
+      await assetsDir.create(recursive: true);
+    }
+
+    final targetPath = path.join(assetsDir.path, fileName);
+
+    // 复制文件
+    await sourceFile.copy(targetPath);
+
+    // 返回相对路径（用于assets配置）
+    return 'assets/images/diyImages/$fileName';
+  }
+
+  // 创建配置文件
+  Future<void> _createConfigFile() async {
+    if (_savedImagePath == null) return;
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final configFileName = 'diyPuzzleConf$timestamp.json';
+
+    // 创建配置数据
+    final configData = {
+      'createdAt': DateTime.now().toIso8601String(),
+      'imagePath': _savedImagePath,
+      'difficulty': _mapGridSizeToDifficulty(_gridSize),
+      'gridSize': _gridSize,
+      'difficultyText': _getDifficultyText(),
+    };
+
+    // 创建配置文件目录
+    final configDir = Directory('assets/configs');
+    if (!await configDir.exists()) {
+      await configDir.create(recursive: true);
+    }
+
+    // 保存配置文件
+    final configPath = path.join(configDir.path, configFileName);
+    final configFile = File(configPath);
+    await configFile.writeAsString(json.encode(configData));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('配置文件已创建: $configFileName'),
+          backgroundColor: Colors.blue,
+        ),
+      );
     }
   }
 
@@ -278,6 +404,24 @@ class _DiyPageState extends State<DiyPage> {
       label: Text(_showPreview ? '隐藏预览' : '显示预览'),
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.purple,
+      ),
+    );
+  }
+
+  // 构建保存按钮
+  Widget _buildSaveButton() {
+    return ElevatedButton.icon(
+      onPressed: _selectedImage != null && _savedImagePath == null
+          ? _saveImageAndConfig
+          : null,
+      icon: Icon(_savedImagePath != null ? Icons.check : Icons.save),
+      label: Text(_savedImagePath != null ? '已保存' : '保存图片和配置'),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        backgroundColor: _savedImagePath != null ? Colors.green : Colors.purple,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.grey,
+        disabledForegroundColor: Colors.white,
       ),
     );
   }
