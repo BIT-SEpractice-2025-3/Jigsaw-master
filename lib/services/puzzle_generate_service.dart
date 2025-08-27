@@ -9,6 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class PuzzleGenerateService {
+  // 添加一个私有的、可空的成员变量来缓存最后一次加载的图片
+  ui.Image? _lastLoadedImage;
+  // 提供一个公共的 getter 方法，让外部可以获取到这个缓存的图片
+  ui.Image? get lastLoadedImage => _lastLoadedImage;
   /// 公开的API：根据图片源和难度生成拼图块列表
   Future<List<PuzzlePiece>> generatePuzzle(
       String imageSource, int difficulty) async {
@@ -19,7 +23,7 @@ class PuzzleGenerateService {
     } else {
       image = await _loadImageFromFile(imageSource);
     }
-
+    _lastLoadedImage = image;
     // 根据难度确定网格大小
     int gridSize = _getDifficultySize(difficulty);
 
@@ -210,102 +214,92 @@ class PuzzleGenerateService {
 
     // --- 4. 遍历节点生成每个拼图块 ---
     for (var node in graph.nodes.values) {
-      final finalPath = Path();
       final row = node.id ~/ gridSize;
       final col = node.id % gridSize;
-
       final offsetX = col * pieceWidth;
       final offsetY = row * pieceHeight;
 
-// --- 5. 组装拼图块的轮廓路径 ---
-      // 定义四个角的坐标，方便理解
-      final topLeft = Offset(offsetX, offsetY);
-      final topRight = Offset(offsetX + pieceWidth, offsetY);
-      final bottomRight = Offset(offsetX + pieceWidth, offsetY + pieceHeight);
-      final bottomLeft = Offset(offsetX, offsetY + pieceHeight);
-
-      // 从左上角开始
-      finalPath.moveTo(topLeft.dx, topLeft.dy);
+      // --- 5. 在局部坐标系 (0,0) 组装拼图块的轮廓路径 ---
+      final localPath = Path();
 
       // -- 上边 --
       final topNeighborId = (row - 1) * gridSize + col;
       final topEdge = _findEdge(graph, node.id, topNeighborId);
       if (topEdge == null) {
-        finalPath.lineTo(topRight.dx, topRight.dy);
+        localPath.lineTo(pieceWidth, 0);
       } else {
         final isConvex = (topEdge.nodeA_id == node.id) ? topEdge.isConvexOnA : !topEdge.isConvexOnA;
         final edgePath = generatePuzzleEdgePath(pieceWidth, bumpSize, isConvex);
-        // 使用 addPath 开始第一个路径段
-        finalPath.addPath(edgePath, topLeft);
+        localPath.addPath(edgePath, Offset.zero);
       }
 
       // -- 右边 --
       final rightNeighborId = row * gridSize + (col + 1);
       final rightEdge = _findEdge(graph, node.id, rightNeighborId);
       if (rightEdge == null) {
-        finalPath.lineTo(bottomRight.dx, bottomRight.dy);
+        localPath.lineTo(pieceWidth, pieceHeight);
       } else {
         final isConvex = (rightEdge.nodeA_id == node.id) ? rightEdge.isConvexOnA : !rightEdge.isConvexOnA;
         var edgePath = generatePuzzleEdgePath(pieceHeight, bumpSize, isConvex);
         final matrix = Matrix4.identity()
-          ..translate(topRight.dx, topRight.dy)
+          ..translate(pieceWidth, 0.0)
           ..rotateZ(pi / 2);
-        // 使用 extendWithPath 连接后续的路径段
-        finalPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
+        localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
       }
 
       // -- 下边 --
       final bottomNeighborId = (row + 1) * gridSize + col;
       final bottomEdge = _findEdge(graph, node.id, bottomNeighborId);
       if (bottomEdge == null) {
-        finalPath.lineTo(bottomLeft.dx, bottomLeft.dy);
+        localPath.lineTo(0, pieceHeight);
       } else {
         final isConvex = (bottomEdge.nodeA_id == node.id) ? bottomEdge.isConvexOnA : !bottomEdge.isConvexOnA;
         var edgePath = generatePuzzleEdgePath(pieceWidth, bumpSize, isConvex);
         final matrix = Matrix4.identity()
-          ..translate(bottomRight.dx, bottomRight.dy)
+          ..translate(pieceWidth, pieceHeight)
           ..rotateZ(pi);
-        finalPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
+        localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
       }
 
       // -- 左边 --
       final leftNeighborId = row * gridSize + (col - 1);
       final leftEdge = _findEdge(graph, node.id, leftNeighborId);
       if (leftEdge == null) {
-        finalPath.lineTo(topLeft.dx, topLeft.dy);
+        localPath.lineTo(0, 0);
       } else {
         final isConvex = (leftEdge.nodeA_id == node.id) ? leftEdge.isConvexOnA : !leftEdge.isConvexOnA;
         var edgePath = generatePuzzleEdgePath(pieceHeight, bumpSize, isConvex);
         final matrix = Matrix4.identity()
-          ..translate(bottomLeft.dx, bottomLeft.dy)
+          ..translate(0.0, pieceHeight)
           ..rotateZ(3 * pi / 2);
-        finalPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
+        localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
       }
+      localPath.close();
 
-      // 封闭路径，确保首尾相连
-      finalPath.close();
-// --- 6. 执行切割 ---
+      // 将局部路径平移到它在原图上的最终位置
+      final finalPath = localPath.shift(Offset(offsetX, offsetY));
+
+      // --- 6. 执行切割 ---
       final bounds = finalPath.getBounds();
       final recorder = ui.PictureRecorder();
 
-      // 创建一个尺寸与拼图块边界框完全相同的画布
-      final canvas = Canvas(recorder, bounds);
+      // 【核心修正】: 创建 Canvas 时不再传入 bounds
+      final canvas = Canvas(recorder);
 
-      // 将在全局坐标系下的 finalPath，平移到当前画布的局部坐标系 (左上角为0,0)
-      final localPath = finalPath.shift(-bounds.topLeft);
-
-      // 1. 设置裁剪区域：后续的绘制操作将只在此路径内部生效
-      canvas.clipPath(localPath);
-
-      // 2. 将原始大图绘制上去
-      canvas.drawImage(image, -bounds.topLeft, Paint());
-
+      // 【逻辑修正】:
+      // 1. 将画布的原点移动到 piece 的左上角
+      canvas.translate(-bounds.left, -bounds.top);
+      // 2. 在 piece 的原始位置进行裁剪
+      canvas.clipPath(finalPath);
+      // 3. 将整个大图画上去，由于画布已经移动，正确的部分会暴露在裁剪区域内
+      canvas.drawImage(image, Offset.zero, Paint());
 
       final picture = recorder.endRecording();
       final pieceImage = await picture.toImage(
         bounds.width.ceil(),
         bounds.height.ceil(),
       );
+
       // --- 7. 封装并添加到列表---
       final piece = PuzzlePiece(
         image: pieceImage,
