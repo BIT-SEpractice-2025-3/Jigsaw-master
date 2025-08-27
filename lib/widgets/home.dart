@@ -1,8 +1,8 @@
-//主页
-//->难度选择
-//->排行榜
-//->设置
-//->自定义
+// 主页
+// ->难度选择
+// ->排行榜
+// ->设置
+// ->自定义
 
 import 'package:flutter/material.dart';  // 导入Flutter的材料设计库
 import 'game_select.dart';
@@ -14,122 +14,397 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('拼图大师'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Button_toGameSelect(context),
-              const SizedBox(height: 20),
-              Button_toRanking(context),
-              const SizedBox(height: 20),
-              Button_toDiy(context),
-              const SizedBox(height: 20),
-              Button_toSetting(context),
-            ],
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: Stack(
+        children: [
+          // 背景装饰 - 拼图元素
+          _buildBackgroundPuzzleElements(context),
+
+          // 主要内容
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 应用标题和图标
+                const Column(
+                  children: [
+                    Icon(
+                      Icons.extension_rounded,
+                      size: 80,
+                      color: Color(0xFF6A5ACD),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      '拼图大师',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D2B55),
+                        letterSpacing: 1.5,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 4.0,
+                            color: Colors.black12,
+                            offset: Offset(2.0, 2.0),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '挑战你的空间思维与逻辑能力',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    SizedBox(height: 40),
+                  ],
+                ),
+
+                // 功能按钮区域
+                Column(
+                  children: [
+                    _buildMenuButton(
+                      context: context,
+                      icon: Icons.play_circle_fill_rounded,
+                      title: '开始游戏',
+                      subtitle: '选择难度开始挑战',
+                      color: const Color(0xFF6A5ACD),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const GameSelectionPage()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMenuButton(
+                      context: context,
+                      icon: Icons.leaderboard_rounded,
+                      title: '排行榜',
+                      subtitle: '查看最高分数记录',
+                      color: const Color(0xFFE91E63),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const RankingPage()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMenuButton(
+                      context: context,
+                      icon: Icons.photo_library_rounded,
+                      title: '自定义拼图',
+                      subtitle: '使用自己的图片创建拼图',
+                      color: const Color(0xFFFF9800),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DiyPage()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildMenuButton(
+                      context: context,
+                      icon: Icons.settings_rounded,
+                      title: '设置',
+                      subtitle: '调整游戏偏好设置',
+                      color: const Color(0xFF4CAF50),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SettingPage()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 40),
+
+                // 底部版权信息
+                const Column(
+                  children: [
+                    Text(
+                      '北京理工大学软件工程学院',
+                      style: TextStyle(
+                        color: Color(0xFF6A5ACD),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '软件工程综合实践 · 2023级',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        )
+        ],
+      ),
+    );
+  }
+
+  // 构建背景拼图元素
+  Widget _buildBackgroundPuzzleElements(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+
+    return Stack(
+      children: [
+        // 背景渐变
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFF3F4F8),
+                Color(0xFFE8EAF6),
+                Color(0xFFF3F4F8),
+              ],
+            ),
+          ),
+        ),
+
+        // 左上角拼图元素
+        Positioned(
+          top: -30,
+          left: -30,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x306A5ACD),
+            size: 150,
+            rotation: 0.2,
+          ),
+        ),
+
+        // 右上角拼图元素
+        Positioned(
+          top: 50,
+          right: -40,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x30E91E63),
+            size: 120,
+            rotation: -0.3,
+          ),
+        ),
+
+        // 左下角拼图元素
+        Positioned(
+          bottom: 80,
+          left: -50,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x30FF9800),
+            size: 130,
+            rotation: 0.7,
+          ),
+        ),
+
+        // 右下角拼图元素
+        Positioned(
+          bottom: -40,
+          right: -30,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x304CAF50),
+            size: 160,
+            rotation: -0.5,
+          ),
+        ),
+
+        // 中央装饰拼图元素
+        Positioned(
+          top: screenSize.height * 0.3,
+          left: screenSize.width * 0.2,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x206A5ACD),
+            size: 70,
+            rotation: 0.1,
+          ),
+        ),
+
+        Positioned(
+          bottom: screenSize.height * 0.3,
+          right: screenSize.width * 0.2,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x20FF9800),
+            size: 60,
+            rotation: -0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 构建拼图装饰元素
+  Widget _buildPuzzleDecoration({
+    required Color color,
+    required double size,
+    double rotation = 0.0,
+  }) {
+    return Transform.rotate(
+      angle: rotation,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: CustomPaint(
+          painter: _PuzzlePiecePainter(color: color),
+        ),
+      ),
+    );
+  }
+
+  // 构建菜单按钮
+  Widget _buildMenuButton({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      borderRadius: BorderRadius.circular(20),
+      elevation: 4,
+      shadowColor: color.withOpacity(0.3),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: color.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: ListTile(
+          onTap: onPressed,
+          leading: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 28,
+            ),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          trailing: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: color,
+              size: 16,
+            ),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        ),
+      ),
     );
   }
 }
 
-ElevatedButton Button_toGameSelect(BuildContext context){
-  return ElevatedButton(
-    onPressed:(){
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const GameSelectionPage()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
-    ),
-    child: const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.gamepad),
-        SizedBox(width: 10),
-        Text('开始拼图', style: TextStyle(fontSize: 18)),
-      ],
-    ),
-  );
-}
+// 拼图块绘制类
+class _PuzzlePiecePainter extends CustomPainter {
+  final Color color;
 
-ElevatedButton Button_toRanking(BuildContext context){
-  return ElevatedButton(
-    onPressed:(){
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const RankingPage()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
-    ),
-    child: const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.leaderboard),
-        SizedBox(width: 10),
-        Text('排行榜', style: TextStyle(fontSize: 18)),
-      ],
-    ),
-  );
-}
+  _PuzzlePiecePainter({required this.color});
 
-ElevatedButton Button_toSetting(BuildContext context){
-  return ElevatedButton(
-    onPressed:(){
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const SettingPage()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
-    ),
-    child: const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.settings),
-        SizedBox(width: 10),
-        Text('设置', style: TextStyle(fontSize: 18)),
-      ],
-    ),
-  );
-}
-ElevatedButton Button_toDiy(BuildContext context){
-  return ElevatedButton(
-    onPressed:(){
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const DiyPage()),
-      );
-    },
-    style: ElevatedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-      backgroundColor: Colors.blue,
-      foregroundColor: Colors.white,
-    ),
-    child: const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.settings),
-        SizedBox(width: 10),
-        Text('自定义拼图', style: TextStyle(fontSize: 18)),
-      ],
-    ),
-  );
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // 绘制拼图凹凸形状
+    _drawPuzzleTab(canvas, center, radius, 0); // 上
+    _drawPuzzleTab(canvas, center, radius, 1); // 右
+    _drawPuzzleTab(canvas, center, radius, 2); // 下
+    _drawPuzzleTab(canvas, center, radius, 3); // 左
+  }
+
+  void _drawPuzzleTab(Canvas canvas, Offset center, double radius, int side) {
+    final path = Path();
+    final tabWidth = radius / 2;
+
+    switch (side) {
+      case 0: // 上
+        path.moveTo(center.dx - tabWidth, center.dy - radius);
+        path.quadraticBezierTo(
+            center.dx, center.dy - radius - tabWidth,
+            center.dx + tabWidth, center.dy - radius
+        );
+        break;
+      case 1: // 右
+        path.moveTo(center.dx + radius, center.dy - tabWidth);
+        path.quadraticBezierTo(
+            center.dx + radius + tabWidth, center.dy,
+            center.dx + radius, center.dy + tabWidth
+        );
+        break;
+      case 2: // 下
+        path.moveTo(center.dx + tabWidth, center.dy + radius);
+        path.quadraticBezierTo(
+            center.dx, center.dy + radius + tabWidth,
+            center.dx - tabWidth, center.dy + radius
+        );
+        break;
+      case 3: // 左
+        path.moveTo(center.dx - radius, center.dy + tabWidth);
+        path.quadraticBezierTo(
+            center.dx - radius - tabWidth, center.dy,
+            center.dx - radius, center.dy - tabWidth
+        );
+        break;
+    }
+
+    canvas.drawPath(path, Paint()
+      ..color = Colors.white.withOpacity(0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
