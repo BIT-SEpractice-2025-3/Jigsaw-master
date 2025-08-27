@@ -5,12 +5,9 @@ import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
 import 'dart:io'; // 导入IO库，用于处理文件
 import 'dart:convert'; // 导入JSON处理库
 import 'package:path/path.dart' as path; // 导入路径处理库
-import 'package:file_picker/file_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'home.dart';
 import 'puzzle.dart';
@@ -68,18 +65,29 @@ class _DiyPageState extends State<DiyPage> {
           width: 250,
           height: 250,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
+            border: Border.all(color: Colors.grey, width: 2),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: _showPreview
-              ? _buildPuzzlePreview()
-              : ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.file(
-                    _selectedImage!,
-                    fit: BoxFit.cover,
-                  ),
-                ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: _showPreview
+                ? _buildPuzzlePreview()
+                : (_selectedImage != null
+                    ? Image.file(
+                        _selectedImage!,
+                        width: 246,
+                        height: 246,
+                        fit: BoxFit.contain,
+                      )
+                    : (_savedImagePath != null
+                        ? Image.asset(
+                            _savedImagePath!,
+                            width: 246,
+                            height: 246,
+                            fit: BoxFit.contain,
+                          )
+                        : Container())),
+          ),
         ),
         const SizedBox(height: 15),
         // 难度选择
@@ -391,8 +399,7 @@ class _DiyPageState extends State<DiyPage> {
   // 构建预览切换按钮
   Widget _buildPreviewToggleButton() {
     return OutlinedButton.icon(
-      onPressed: null, // 临时禁用按钮，因为拼图切割算法还未完成
-      // onPressed: _togglePreview,
+      onPressed: _togglePreview,
       icon: Icon(_showPreview ? Icons.visibility_off : Icons.visibility),
       label: Text(_showPreview ? '隐藏预览' : '显示预览'),
       style: OutlinedButton.styleFrom(
@@ -419,26 +426,10 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
-  // 构建导入配置按钮组
-  Widget _buildImportButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _importConfig,
-          icon: const Icon(Icons.download),
-          label: const Text('导入配置'),
-        ),
-      ],
-    );
-  }
-
   // 构建图片选择按钮
   Widget _buildImageSelectionButton() {
     return Column(
       children: [
-        const Text("选择一张图片开始拼图",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 50),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -454,11 +445,24 @@ class _DiyPageState extends State<DiyPage> {
                 foregroundColor: Colors.white,
               ),
             ),
+            const SizedBox(width: 20),
+            ElevatedButton.icon(
+              onPressed: _importConfig,
+              icon: const Icon(Icons.download),
+              label: const Text('导入配置'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
           ],
         ),
       ],
     );
   }
+
   // 导入配置
   Future<void> _importConfig() async {
     final result = await FilePicker.platform.pickFiles(
