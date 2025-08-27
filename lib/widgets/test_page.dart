@@ -16,7 +16,7 @@ class TestPage extends StatefulWidget {
 class _TestPageState extends State<TestPage> {
   Map<int, PuzzlePiece> _piecesMap = {};
   bool _isLoading = true;
-  final String _imagePath = 'assets/images/1.jpg'; // 确保图片路径正确
+  final String _imagePath = 'assets/images/default_puzzle.jpg'; // 确保图片路径正确
   Size _imageSize = Size.zero;
   final Size _containerSize = const Size(400, 400); // 拼图容器的UI尺寸
   double _scale = 1.0;
