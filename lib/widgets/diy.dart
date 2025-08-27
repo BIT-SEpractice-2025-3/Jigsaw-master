@@ -3,9 +3,12 @@
 //临时禁用预览按钮防止崩溃，等待拼图算法完成
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 import 'dart:io'; // 导入IO库，用于处理文件
 import 'dart:convert'; // 导入JSON处理库
 import 'package:path/path.dart' as path; // 导入路径处理库
+import 'package:file_picker/file_picker.dart';
 import 'home.dart';
 import 'puzzle.dart';
 import '../services/puzzle_generate_service.dart';
@@ -163,16 +166,6 @@ class _DiyPageState extends State<DiyPage> {
         _savedImagePath = null; // 重置保存路径
         _showPreview = false;
       });
-
-      // 显示图片选择成功提示
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('图片已选择，点击保存按钮进行保存'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
     }
   }
 
@@ -189,7 +182,6 @@ class _DiyPageState extends State<DiyPage> {
     }
 
     try {
-      // 保存图片到assets/images/diyImages目录
       final savedPath = await _saveImageToAssets(_selectedImage!);
 
       setState(() {
@@ -202,10 +194,9 @@ class _DiyPageState extends State<DiyPage> {
       // 显示保存成功提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('图片和配置已保存\n图片路径: $savedPath'),
+          const SnackBar(
+            content: Text('图片和配置已保存'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -224,29 +215,34 @@ class _DiyPageState extends State<DiyPage> {
 
   // 保存图片到assets/images/diyImages目录
   Future<String> _saveImageToAssets(File sourceFile) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory(path.join(appDir.path, 'diyImages'));
+    if (!await imagesDir.exists()) {
+      await imagesDir.create(recursive: true);
+    }
     // 获取当前时间戳作为文件名
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final extension = path.extension(sourceFile.path);
     final fileName = 'diy_image_$timestamp$extension';
 
-    // 创建目标路径
-    final assetsDir = Directory('assets/images/diyImages');
-    if (!await assetsDir.exists()) {
-      await assetsDir.create(recursive: true);
-    }
-
-    final targetPath = path.join(assetsDir.path, fileName);
+    final targetPath = path.join(imagesDir.path, fileName);
 
     // 复制文件
     await sourceFile.copy(targetPath);
 
     // 返回相对路径（用于assets配置）
-    return 'assets/images/diyImages/$fileName';
+    return targetPath;
   }
 
   // 创建配置文件
   Future<void> _createConfigFile() async {
     if (_savedImagePath == null) return;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final configDir = Directory(path.join(appDir.path, 'configs'));
+    if (!await configDir.exists()) {
+      await configDir.create(recursive: true);
+    }
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final configFileName = 'diyPuzzleConf$timestamp.json';
@@ -260,21 +256,15 @@ class _DiyPageState extends State<DiyPage> {
       'difficultyText': _getDifficultyText(),
     };
 
-    // 创建配置文件目录
-    final configDir = Directory('assets/configs');
-    if (!await configDir.exists()) {
-      await configDir.create(recursive: true);
-    }
-
-    // 保存配置文件
     final configPath = path.join(configDir.path, configFileName);
     final configFile = File(configPath);
     await configFile.writeAsString(json.encode(configData));
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('配置文件已创建: $configFileName'),
+        const SnackBar(
+          // content: Text('配置文件已创建: $configFileName'),
+          content: Text('配置文件已创建'),
           backgroundColor: Colors.blue,
         ),
       );
@@ -451,5 +441,116 @@ class _DiyPageState extends State<DiyPage> {
         ),
       ],
     );
+  }
+  // 导入配置
+  Future<void> _importConfig() async {
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: '选择要导入的配置文件',
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final pathStr = result.files.first.path;
+    if (pathStr == null) return;
+    try {
+      final content = await File(pathStr).readAsString();
+      final data = json.decode(content);
+
+      if (data is! Map || !data.containsKey('gridSize')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('配置文件格式不正确'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      final importedGridSize = (data['gridSize'] is int)
+          ? data['gridSize']
+          : int.parse(data['gridSize'].toString());
+      final importedImagePath = data['imagePath'] as String?;
+
+      // 验证图片存在性（如果有 imagePath）
+      bool imageExists = true;
+      if (importedImagePath != null && importedImagePath.isNotEmpty) {
+        final appDir = await getApplicationDocumentsDirectory();
+
+        if (importedImagePath.startsWith('assets/')) {
+          final candidateOnDisk =
+              File(path.join(appDir.path, importedImagePath));
+          if (await candidateOnDisk.exists()) {
+            imageExists = true;
+          } else {
+            try {
+              await rootBundle.load(importedImagePath);
+              imageExists = true;
+            } catch (e) {
+              imageExists = false;
+            }
+          }
+        } else {
+          final f = File(importedImagePath);
+          imageExists = await f.exists();
+        }
+      }
+
+      if (!imageExists) {
+        if (mounted) {
+          final pick = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('图片未找到'),
+              content: const Text('配置中引用的图片不存在，是否现在从相册选择图片以完成导入？'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('选择图片'),
+                ),
+              ],
+            ),
+          );
+          if (pick == true) {
+            await _pickImage();
+          }
+        }
+        return; // 不更新状态，等待用户操作
+      }
+
+      // 更新状态并刷新UI
+      setState(() {
+        _gridSize = importedGridSize;
+        if (importedImagePath != null && importedImagePath.isNotEmpty) {
+          final candidate = File(importedImagePath);
+          if (candidate.existsSync()) {
+            _selectedImage = candidate;
+            _savedImagePath = null;
+          } else {
+            // 如果是 assets 路径且打包后可用，保留为 _savedImagePath
+            _savedImagePath = importedImagePath;
+            _selectedImage = null;
+          }
+        }
+        _showPreview = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('导入成功'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导入失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
