@@ -5,9 +5,12 @@ import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 import 'dart:io'; // 导入IO库，用于处理文件
 import 'dart:convert'; // 导入JSON处理库
 import 'package:path/path.dart' as path; // 导入路径处理库
+import 'package:file_picker/file_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'home.dart';
 import 'puzzle.dart';
@@ -262,10 +265,10 @@ class _DiyPageState extends State<DiyPage> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          // content: Text('配置文件已创建: $configFileName'),
-          content: Text('配置文件已创建'),
+        SnackBar(
+          content: Text('配置文件已创建\n保存路径: $configPath'),
           backgroundColor: Colors.blue,
+          duration: const Duration(seconds: 4), // 增加显示时间以便用户看到完整路径
         ),
       );
     }
@@ -413,6 +416,20 @@ class _DiyPageState extends State<DiyPage> {
         disabledBackgroundColor: Colors.grey,
         disabledForegroundColor: Colors.white,
       ),
+    );
+  }
+
+  // 构建导入配置按钮组
+  Widget _buildImportButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton.icon(
+          onPressed: _importConfig,
+          icon: const Icon(Icons.download),
+          label: const Text('导入配置'),
+        ),
+      ],
     );
   }
 
