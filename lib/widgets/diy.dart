@@ -3,15 +3,16 @@
 //->开始游戏页面
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
 import 'dart:io'; // 导入IO库，用于处理文件
 import 'dart:convert'; // 导入JSON处理库
 import 'package:path/path.dart' as path; // 导入路径处理库
+import 'package:file_picker/file_picker.dart';
 import 'home.dart';
 import 'puzzle.dart';
 import '../services/puzzle_generate_service.dart';
 import '../models/puzzle_piece.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart' show rootBundle;
 
 class DiyPage extends StatefulWidget {
   const DiyPage({super.key});
@@ -178,16 +179,6 @@ class _DiyPageState extends State<DiyPage> {
         _savedImagePath = null; // 重置保存路径
         _showPreview = false;
       });
-
-      // 显示图片选择成功提示
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('图片已选择，点击保存按钮进行保存'),
-            backgroundColor: Colors.blue,
-          ),
-        );
-      }
     }
   }
 
@@ -204,7 +195,6 @@ class _DiyPageState extends State<DiyPage> {
     }
 
     try {
-      // 保存图片到assets/images/diyImages目录
       final savedPath = await _saveImageToAssets(_selectedImage!);
 
       setState(() {
@@ -217,10 +207,9 @@ class _DiyPageState extends State<DiyPage> {
       // 显示保存成功提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('图片和配置已保存\n图片路径: $savedPath'),
+          const SnackBar(
+            content: Text('图片和配置已保存'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -239,29 +228,34 @@ class _DiyPageState extends State<DiyPage> {
 
   // 保存图片到assets/images/diyImages目录
   Future<String> _saveImageToAssets(File sourceFile) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory(path.join(appDir.path, 'diyImages'));
+    if (!await imagesDir.exists()) {
+      await imagesDir.create(recursive: true);
+    }
     // 获取当前时间戳作为文件名
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final extension = path.extension(sourceFile.path);
     final fileName = 'diy_image_$timestamp$extension';
 
-    // 创建目标路径
-    final assetsDir = Directory('assets/images/diyImages');
-    if (!await assetsDir.exists()) {
-      await assetsDir.create(recursive: true);
-    }
-
-    final targetPath = path.join(assetsDir.path, fileName);
+    final targetPath = path.join(imagesDir.path, fileName);
 
     // 复制文件
     await sourceFile.copy(targetPath);
 
     // 返回相对路径（用于assets配置）
-    return 'assets/images/diyImages/$fileName';
+    return targetPath;
   }
 
   // 创建配置文件
   Future<void> _createConfigFile() async {
     if (_savedImagePath == null) return;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final configDir = Directory(path.join(appDir.path, 'configs'));
+    if (!await configDir.exists()) {
+      await configDir.create(recursive: true);
+    }
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final configFileName = 'diyPuzzleConf$timestamp.json';
@@ -275,13 +269,6 @@ class _DiyPageState extends State<DiyPage> {
       'difficultyText': _getDifficultyText(),
     };
 
-    // 创建配置文件目录
-    final configDir = Directory('assets/configs');
-    if (!await configDir.exists()) {
-      await configDir.create(recursive: true);
-    }
-
-    // 保存配置文件
     final configPath = path.join(configDir.path, configFileName);
     final configFile = File(configPath);
     await configFile.writeAsString(json.encode(configData));
@@ -289,8 +276,9 @@ class _DiyPageState extends State<DiyPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('配置文件已创建: $configFileName'),
+          content: Text('配置文件已创建\n保存路径: $configPath'),
           backgroundColor: Colors.blue,
+          duration: const Duration(seconds: 4), // 增加显示时间以便用户看到完整路径
         ),
       );
     }
@@ -493,7 +481,7 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
-  // 构建导入/导出配置按钮组
+  // 构建导入配置按钮组
   Widget _buildImportButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -568,15 +556,14 @@ class _DiyPageState extends State<DiyPage> {
       // 验证图片存在性（如果有 imagePath）
       bool imageExists = true;
       if (importedImagePath != null && importedImagePath.isNotEmpty) {
+        final appDir = await getApplicationDocumentsDirectory();
+
         if (importedImagePath.startsWith('assets/')) {
-          // 首先检查项目目录下是否有该文件（例如刚刚保存到 assets/images/diyImages）
-          final candidate =
-              File(path.join(Directory.current.path, importedImagePath));
-          if (await candidate.exists()) {
+          final candidateOnDisk =
+              File(path.join(appDir.path, importedImagePath));
+          if (await candidateOnDisk.exists()) {
             imageExists = true;
-            // 将 importedImagePath 替换为磁盘绝对路径，便于立即显示
           } else {
-            // 如果磁盘不存在，再尝试 rootBundle（只有打包或重启后 asset 可用）
             try {
               await rootBundle.load(importedImagePath);
               imageExists = true;
@@ -620,28 +607,14 @@ class _DiyPageState extends State<DiyPage> {
       setState(() {
         _gridSize = importedGridSize;
         if (importedImagePath != null && importedImagePath.isNotEmpty) {
-          if (importedImagePath.startsWith('assets/')) {
-            // 优先使用磁盘上的同名文件（如果存在），否则保留 assets 路径
-            final candidatePath =
-                path.join(Directory.current.path, importedImagePath);
-            final candidate = File(candidatePath);
-            if (candidate.existsSync()) {
-              _selectedImage = candidate;
-              _savedImagePath = null;
-            } else {
-              // 运行时不可访问的 assets，仅在下次重启或打包后可用
-              _savedImagePath = importedImagePath;
-              _selectedImage = null;
-            }
+          final candidate = File(importedImagePath);
+          if (candidate.existsSync()) {
+            _selectedImage = candidate;
+            _savedImagePath = null;
           } else {
-            final f = File(importedImagePath);
-            if (f.existsSync()) {
-              _selectedImage = f;
-              _savedImagePath = null;
-            } else {
-              _savedImagePath = importedImagePath;
-              _selectedImage = null;
-            }
+            // 如果是 assets 路径且打包后可用，保留为 _savedImagePath
+            _savedImagePath = importedImagePath;
+            _selectedImage = null;
           }
         }
         _showPreview = false;
