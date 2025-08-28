@@ -1,5 +1,6 @@
 //游戏服务
 import 'dart:async';
+import 'dart:ui' as ui;
 import '/models/puzzle_piece.dart';
 // 游戏状态枚举
 enum GameStatus {
@@ -39,7 +40,7 @@ class PuzzleGameService {
   Future<void> initGame(List<PuzzlePiece> pieces, int difficulty) async {
     _difficulty = difficulty;
     _availablePieces = List.from(pieces);
-    _placedPieces = List.filled(difficulty * difficulty, null);
+    _placedPieces = List.filled((difficulty+2) * (difficulty+2), null);
     _elapsedSeconds = 0;
     _status = GameStatus.notStarted;
     _statusController.add(_status);
@@ -63,19 +64,34 @@ class PuzzleGameService {
     }
   }
 
-  // 尝试放置拼图碎片
-  bool placePiece(int pieceIndex, int targetPosition) {
+  // 在PuzzleGameService中添加吸附判断方法
+  bool _shouldSnapToPosition(ui.Offset currentPosition, ui.Offset targetPosition) {
+    // 设置吸附阈值，比如20像素
+    const double snapThreshold = 50.0;
+    final distance = (currentPosition - targetPosition).distance;
+    return distance <= snapThreshold;
+  }
+
+  // 修改placePiece方法，添加吸附逻辑
+  bool placePiece(int pieceIndex, int targetPosition, ui.Offset dropPosition) {
     if (_status != GameStatus.inProgress) return false;
+    if (targetPosition < 0 || targetPosition >= _placedPieces.length) return false;
+    if (_placedPieces[targetPosition] != null) return false;
 
-    // TODO: 实现拼图放置逻辑
-    // 1. 检查位置是否有效
-    // 2. 检查是否已有碎片
-    // 3. 移动碎片
+    final piece = _availablePieces[pieceIndex];
 
-    // 检查游戏是否完成
-    _checkGameCompletion();
+    // 检查是否应该吸附到正确位置
+    final shouldSnap = _shouldSnapToPosition(dropPosition, piece.position);
 
-    return true;
+    if (shouldSnap) {
+      // 吸附到正确位置
+      _placedPieces[targetPosition] = piece;
+      _availablePieces.removeAt(pieceIndex);
+      _checkGameCompletion();
+      return true;
+    }
+
+    return false; // 不满足吸附条件，返回false
   }
 
   // 移除已放置的拼图碎片
@@ -88,11 +104,20 @@ class PuzzleGameService {
 
   // 检查游戏是否完成
   void _checkGameCompletion() {
-    // TODO: 实现完成检查逻辑
-    // 如果所有碎片都正确放置:
-    // _status = GameStatus.completed;
-    // _statusController.add(_status);
-    // _stopTimer();
+    // 检查是否所有碎片都正确放置
+    bool allPiecesPlaced = true;
+    for (var piece in _placedPieces) {
+      if (piece == null) {
+        allPiecesPlaced = false;
+        break;
+      }
+    }
+
+    if (allPiecesPlaced) {
+      _status = GameStatus.completed;
+      _statusController.add(_status);
+      _stopTimer();
+    }
   }
 
   // 开始计时
@@ -120,9 +145,26 @@ class PuzzleGameService {
 
   // 获取游戏分数
   int calculateScore() {
-    // TODO: 实现分数计算逻辑
-    // 可以基于时间、难度和使用的提示数量
-    return 0;
+    if (_status != GameStatus.completed) return 0;
+
+    // 分数计算逻辑：基于时间、难度和完成度
+    final int baseScore = 1000; // 基础分数
+    final int timePenalty = _elapsedSeconds * 10; // 时间惩罚（每秒扣10分）
+    final int difficultyBonus = _difficulty * 200; // 难度奖励
+
+    // 计算最终分数（确保不为负数）
+    int finalScore = baseScore - timePenalty + difficultyBonus;
+
+    // 确保分数不为负
+    if (finalScore < 0) {
+      finalScore = 0;
+    }
+
+    // 根据完成度调整分数（所有碎片都正确放置，所以是100%）
+    final double completionRate = 1.0; // 100%完成
+    finalScore = (finalScore * completionRate).round();
+
+    return finalScore;
   }
 
   // 释放资源

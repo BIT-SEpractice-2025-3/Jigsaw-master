@@ -2,6 +2,9 @@
 //->主页
 //->游戏界面
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui' as ui;
+import '../models/puzzle_piece.dart';
 import 'home.dart';
 import '../services/puzzle_generate_service.dart';
 import '../services/puzzle_game_service.dart';
@@ -22,13 +25,16 @@ class PuzzlePage extends StatefulWidget {
 
 class _PuzzlePageState extends State<PuzzlePage> {
   late PuzzleGameService _gameService;
+  late PuzzleGenerateService _generator;
   late Future<void> _initFuture;
   String? _errorMessage;
+  ui.Image? _targetImage; // 存储目标图像
 
   @override
   void initState() {
     super.initState();
     _gameService = PuzzleGameService();
+    _generator = PuzzleGenerateService();
     _initFuture = _initializeGame();
 
     // 监听游戏状态变化
@@ -42,10 +48,15 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
   Future<void> _initializeGame() async {
     try {
-      final generator = PuzzleGenerateService();
       // 使用默认图片或用户选择的图片
       final imageSource = widget.imagePath ?? 'assets/images/default_puzzle.jpg';
-      final pieces = await generator.generatePuzzle(imageSource, widget.difficulty);
+
+      // 生成拼图碎片并获取目标图像
+      final pieces = await _generator.generatePuzzle(imageSource, widget.difficulty);
+
+      // 获取缓存的完整图像
+      _targetImage = _generator.lastLoadedImage;
+
       await _gameService.initGame(pieces, widget.difficulty);
       _gameService.startGame();
     } catch (e) {
@@ -88,7 +99,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const HomePage()),
-                  (route) => false,
+                      (route) => false,
                 );
               },
               child: const Text('返回主页'),
@@ -198,7 +209,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
       ),
     );
   }
-
   // 游戏状态栏
   Widget _buildStatusBar() {
     return Padding(
@@ -273,40 +283,125 @@ class _PuzzlePageState extends State<PuzzlePage> {
         border: Border.all(color: Colors.grey),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Center(
-        child: Text('目标图像'),
-        // TODO: 显示实际目标图像
-      ),
+      child: _targetImage != null
+          ? Center(
+        child: RawImage(
+          image: _targetImage,
+          fit: BoxFit.contain,
+        ),
+      )
+          : const Center(child: CircularProgressIndicator()),
     );
   }
 
+  PuzzlePiece? _currentDraggingPiece;
+  int _currentDraggingIndex = -1;
+
   // 拼图放置区
   Widget _buildPuzzlePlacementArea() {
-    final gridSize = widget.difficulty == 1 ? 3 : (widget.difficulty == 2 ? 4 : 5);
+    // 获取目标图像的尺寸
+    final double targetWidth = _targetImage?.width.toDouble() ?? 300;
+    final double targetHeight = _targetImage?.height.toDouble() ?? 300;
+
+    // 计算缩放比例以适应容器
+    final double containerWidth = MediaQuery.of(context).size.width - 32;
+    final double scale = containerWidth / targetWidth;
+    final double scaledHeight = targetHeight * scale;
 
     return Container(
+      width: containerWidth,
+      height: scaledHeight,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.blue, width: 2),
         borderRadius: BorderRadius.circular(8),
         color: Colors.white,
       ),
-      child: GridView.builder(
-        padding: const EdgeInsets.all(4),
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridSize,
-          crossAxisSpacing: 2,
-          mainAxisSpacing: 2,
-        ),
-        itemCount: gridSize * gridSize,
-        itemBuilder: (context, index) {
-          return _buildPuzzleSlot(index);
-        },
+      child: Stack(
+        children: [
+          // 已放置的拼图块（不能移动）
+          for (int i = 0; i < _gameService.placedPieces.length; i++)
+            if (_gameService.placedPieces[i] != null)
+              Positioned(
+                left: _gameService.placedPieces[i]!.position.dx * scale,
+                top: _gameService.placedPieces[i]!.position.dy * scale,
+                child: RawImage(
+                  image: _gameService.placedPieces[i]!.image,
+                  width: _gameService.placedPieces[i]!.image.width.toDouble() * scale,
+                  height: _gameService.placedPieces[i]!.image.height.toDouble() * scale,
+                ),
+              ),
+
+          // 放置区域（用于接收拖拽）
+          Positioned.fill(
+            child: DragTarget<int>(
+              builder: (context, candidateData, rejectedData) {
+                return Container(
+                  color: candidateData.isNotEmpty
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.transparent,
+                );
+              },
+              onWillAccept: (data) {
+                return data != null &&
+                    _gameService.status == GameStatus.inProgress &&
+                    data < _gameService.availablePieces.length;
+              },
+              onAcceptWithDetails: (details) {
+                if (_currentDraggingPiece == null) return;
+                print("1");
+                final dropPosition = details.offset;
+
+                // 将位置缩放到原始图像坐标系
+                final double targetWidth = _targetImage?.width.toDouble() ?? 300;
+                final double scale = (MediaQuery.of(context).size.width - 32) / targetWidth;
+
+                final originalPosition = Offset(
+                  dropPosition.dx / scale - 75,
+                  dropPosition.dy / scale - 500,
+                );
+
+                // 使用当前拖动拼图的正确位置进行吸附判断
+                final correctPosition = _currentDraggingPiece!.position;
+
+                // 检查是否应该吸附到正确位置
+                const double snapThreshold = 1000.0;
+                final distance = (originalPosition - correctPosition).distance;
+                final shouldSnap = distance <= snapThreshold;
+                // print(originalPosition);
+                // print(correctPosition);
+                if (shouldSnap) {
+                  // 直接使用拼图的nodeId作为目标位置索引
+                  final targetIndex = _currentDraggingPiece!.nodeId;
+
+                  // 检查目标位置是否有效且为空
+                  if (targetIndex >= 0 &&
+                      targetIndex < _gameService.placedPieces.length &&
+                      _gameService.placedPieces[targetIndex] == null) {
+
+                    // 使用现有的placePiece方法
+                    final success = _gameService.placePiece(
+                        _currentDraggingIndex,
+                        targetIndex,
+                        originalPosition
+                    );
+
+                    if (success) {
+                      setState(() {});
+                    }
+                  }
+                }
+
+                // 重置拖动信息
+                _currentDraggingPiece = null;
+                _currentDraggingIndex = -1;
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // 单个拼图放置槽
   Widget _buildPuzzleSlot(int index) {
     final placedPiece = _gameService.placedPieces.length > index
         ? _gameService.placedPieces[index]
@@ -325,23 +420,33 @@ class _PuzzlePageState extends State<PuzzlePage> {
             ),
           ),
           child: placedPiece != null
-              ? const Center(child: Text('已放置'))  // TODO: 显示实际拼图块
+              ? Center(
+            child: RawImage(
+              image: placedPiece.image,
+              fit: BoxFit.cover,
+            ),
+          )
               : const Center(child: Icon(Icons.add, color: Colors.grey)),
         );
       },
       onWillAccept: (data) {
-        // 检查是否可以放置
-        return true; // TODO: 实现逻辑检查
+        return _gameService.availablePieces.length > data!;
       },
       onAccept: (pieceIndex) {
-        // 放置拼图块
-        _gameService.placePiece(pieceIndex, index);
-        setState(() {});
+        // 获取拖拽释放的位置
+        final RenderBox box = context.findRenderObject() as RenderBox;
+        final dropPosition = box.localToGlobal(Offset.zero);
+
+        // 尝试放置拼图（包含吸附逻辑）
+        final success = _gameService.placePiece(pieceIndex, index, dropPosition);
+        if (success) {
+          setState(() {});
+        }
       },
     );
   }
 
-  // 待放置拼图区域
+// 待放置拼图区域
   Widget _buildAvailablePiecesArea() {
     return Container(
       color: Colors.grey.shade100,
@@ -361,12 +466,16 @@ class _PuzzlePageState extends State<PuzzlePage> {
           ),
 
           // 可横向滑动的拼图块列表
-          Expanded(
+          SizedBox(
+            height: 100, // 固定高度确保可以显示
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _gameService.availablePieces.length,
               itemBuilder: (context, index) {
-                return _buildDraggablePuzzlePiece(index);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: _buildDraggablePuzzlePiece(index),
+                );
               },
             ),
           ),
@@ -381,50 +490,47 @@ class _PuzzlePageState extends State<PuzzlePage> {
       return const SizedBox.shrink();
     }
 
+    final piece = _gameService.availablePieces[index];
+
     return Draggable<int>(
       data: index,
-      feedback: Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          color: Colors.blue.shade100.withOpacity(0.8),
-          border: Border.all(color: Colors.black),
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 5,
-              offset: const Offset(2, 2),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: Text('拖动中'), // TODO: 显示实际拼图块
+      feedback: Transform.scale(
+        scale: 1.1,
+        child: RawImage(
+          image: piece.image,
+          fit: BoxFit.contain,
+          width: 80,
+          height: 80,
         ),
       ),
-      childWhenDragging: Container(
-        width: 80,
-        height: 80,
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade300,
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(4),
+      childWhenDragging: Opacity(
+        opacity: 0.3,
+        child: RawImage(
+          image: piece.image,
+          fit: BoxFit.contain,
+          width: 80,
+          height: 80,
         ),
       ),
-      child: Container(
+      child: RawImage(
+        image: piece.image,
+        fit: BoxFit.contain,
         width: 80,
         height: 80,
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.blue.shade100,
-          border: Border.all(color: Colors.black),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Center(
-          child: Text('拼图块 ${index + 1}'), // TODO: 显示实际拼图块
-        ),
       ),
+      onDragStarted: () {
+        // 记录当前拖动的拼图信息
+        _currentDraggingPiece = piece;
+        _currentDraggingIndex = index;
+      },
+      onDragEnd: (details) {
+        // 拖动结束重置信息
+        _currentDraggingPiece = null;
+        _currentDraggingIndex = -1;
+      },
+      onDragCompleted: () {
+        setState(() {});
+      },
     );
   }
 
@@ -433,7 +539,10 @@ class _PuzzlePageState extends State<PuzzlePage> {
       onPressed:(){
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const PuzzlePage()),
+          MaterialPageRoute(builder: (context) => PuzzlePage(
+            difficulty: widget.difficulty,
+            imagePath: widget.imagePath,
+          )),
         );
       },
       style: ElevatedButton.styleFrom(
@@ -458,7 +567,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
+              (route) => false,
         );
       },
       style: ElevatedButton.styleFrom(
