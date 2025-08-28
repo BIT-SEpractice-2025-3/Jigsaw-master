@@ -74,20 +74,20 @@ class _DiyPageState extends State<DiyPage> {
             child: _showPreview
                 ? _buildPuzzlePreview()
                 : (_selectedImage != null
-                    ? Image.file(
-                        _selectedImage!,
-                        width: 246,
-                        height: 246,
-                        fit: BoxFit.contain,
-                      )
-                    : (_savedImagePath != null
-                        ? Image.asset(
-                            _savedImagePath!,
-                            width: 246,
-                            height: 246,
-                            fit: BoxFit.contain,
-                          )
-                        : Container())),
+                ? Image.file(
+              _selectedImage!,
+              width: 246,
+              height: 246,
+              fit: BoxFit.contain,
+            )
+                : (_savedImagePath != null
+                ? Image.asset(
+              _savedImagePath!,
+              width: 246,
+              height: 246,
+              fit: BoxFit.contain,
+            )
+                : Container())),
           ),
         ),
         const SizedBox(height: 15),
@@ -109,27 +109,27 @@ class _DiyPageState extends State<DiyPage> {
     return ElevatedButton.icon(
       onPressed: _selectedImage != null
           ? () async {
-              // 信息
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                      '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+        // 信息
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
+            backgroundColor: Colors.green,
+          ),
+        );
 
-              // 跳转到拼图游戏页面，优先使用保存的路径，否则使用临时路径
-              final imagePath = _savedImagePath ?? _selectedImage!.path;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PuzzlePage(
-                    imagePath: imagePath,
-                    difficulty: _mapGridSizeToDifficulty(_gridSize),
-                  ),
-                ),
-              );
-            }
+        // 跳转到拼图游戏页面，优先使用保存的路径，否则使用临时路径
+        final imagePath = _savedImagePath ?? _selectedImage!.path;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PuzzlePage(
+              imagePath: imagePath,
+              difficulty: _mapGridSizeToDifficulty(_gridSize),
+            ),
+          ),
+        );
+      }
           : null,
       icon: const Icon(Icons.play_arrow),
       label: const Text('开始拼图', style: TextStyle(fontSize: 18)),
@@ -158,7 +158,7 @@ class _DiyPageState extends State<DiyPage> {
               label: const Text('从相册选择'),
               style: ElevatedButton.styleFrom(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
               ),
@@ -171,7 +171,7 @@ class _DiyPageState extends State<DiyPage> {
               label: const Text('导入配置'),
               style: ElevatedButton.styleFrom(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
@@ -189,7 +189,7 @@ class _DiyPageState extends State<DiyPage> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
+              (route) => false,
         );
       },
       style: ElevatedButton.styleFrom(
