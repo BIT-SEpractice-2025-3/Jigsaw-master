@@ -40,7 +40,7 @@ class PuzzleGameService {
   Future<void> initGame(List<PuzzlePiece> pieces, int difficulty) async {
     _difficulty = difficulty;
     _availablePieces = List.from(pieces);
-    _placedPieces = List.filled(difficulty * difficulty, null);
+    _placedPieces = List.filled((difficulty+2) * (difficulty+2), null);
     _elapsedSeconds = 0;
     _status = GameStatus.notStarted;
     _statusController.add(_status);
@@ -67,7 +67,7 @@ class PuzzleGameService {
   // 在PuzzleGameService中添加吸附判断方法
   bool _shouldSnapToPosition(ui.Offset currentPosition, ui.Offset targetPosition) {
     // 设置吸附阈值，比如20像素
-    const double snapThreshold = 20.0;
+    const double snapThreshold = 50.0;
     final distance = (currentPosition - targetPosition).distance;
     return distance <= snapThreshold;
   }
@@ -104,11 +104,20 @@ class PuzzleGameService {
 
   // 检查游戏是否完成
   void _checkGameCompletion() {
-    // TODO: 实现完成检查逻辑
-    // 如果所有碎片都正确放置:
-    // _status = GameStatus.completed;
-    // _statusController.add(_status);
-    // _stopTimer();
+    // 检查是否所有碎片都正确放置
+    bool allPiecesPlaced = true;
+    for (var piece in _placedPieces) {
+      if (piece == null) {
+        allPiecesPlaced = false;
+        break;
+      }
+    }
+
+    if (allPiecesPlaced) {
+      _status = GameStatus.completed;
+      _statusController.add(_status);
+      _stopTimer();
+    }
   }
 
   // 开始计时
@@ -136,9 +145,26 @@ class PuzzleGameService {
 
   // 获取游戏分数
   int calculateScore() {
-    // TODO: 实现分数计算逻辑
-    // 可以基于时间、难度和使用的提示数量
-    return 0;
+    if (_status != GameStatus.completed) return 0;
+
+    // 分数计算逻辑：基于时间、难度和完成度
+    final int baseScore = 1000; // 基础分数
+    final int timePenalty = _elapsedSeconds * 10; // 时间惩罚（每秒扣10分）
+    final int difficultyBonus = _difficulty * 200; // 难度奖励
+
+    // 计算最终分数（确保不为负数）
+    int finalScore = baseScore - timePenalty + difficultyBonus;
+
+    // 确保分数不为负
+    if (finalScore < 0) {
+      finalScore = 0;
+    }
+
+    // 根据完成度调整分数（所有碎片都正确放置，所以是100%）
+    final double completionRate = 1.0; // 100%完成
+    finalScore = (finalScore * completionRate).round();
+
+    return finalScore;
   }
 
   // 释放资源
