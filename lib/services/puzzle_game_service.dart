@@ -1,5 +1,6 @@
 //游戏服务
 import 'dart:async';
+import 'dart:ui' as ui;
 import '/models/puzzle_piece.dart';
 // 游戏状态枚举
 enum GameStatus {
@@ -63,19 +64,34 @@ class PuzzleGameService {
     }
   }
 
-  // 尝试放置拼图碎片
-  bool placePiece(int pieceIndex, int targetPosition) {
+  // 在PuzzleGameService中添加吸附判断方法
+  bool _shouldSnapToPosition(ui.Offset currentPosition, ui.Offset targetPosition) {
+    // 设置吸附阈值，比如20像素
+    const double snapThreshold = 20.0;
+    final distance = (currentPosition - targetPosition).distance;
+    return distance <= snapThreshold;
+  }
+
+  // 修改placePiece方法，添加吸附逻辑
+  bool placePiece(int pieceIndex, int targetPosition, ui.Offset dropPosition) {
     if (_status != GameStatus.inProgress) return false;
+    if (targetPosition < 0 || targetPosition >= _placedPieces.length) return false;
+    if (_placedPieces[targetPosition] != null) return false;
 
-    // TODO: 实现拼图放置逻辑
-    // 1. 检查位置是否有效
-    // 2. 检查是否已有碎片
-    // 3. 移动碎片
+    final piece = _availablePieces[pieceIndex];
 
-    // 检查游戏是否完成
-    _checkGameCompletion();
+    // 检查是否应该吸附到正确位置
+    final shouldSnap = _shouldSnapToPosition(dropPosition, piece.position);
 
-    return true;
+    if (shouldSnap) {
+      // 吸附到正确位置
+      _placedPieces[targetPosition] = piece;
+      _availablePieces.removeAt(pieceIndex);
+      _checkGameCompletion();
+      return true;
+    }
+
+    return false; // 不满足吸附条件，返回false
   }
 
   // 移除已放置的拼图碎片

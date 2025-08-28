@@ -6,16 +6,25 @@ import 'package:flutter/material.dart';
 class PuzzlePiece {
   final ui.Image image;
   final int nodeId;
-
-  /// 这块拼图在完整拼图中的正确左上角坐标。
-  /// UI将直接使用这个坐标来定位拼图块。
-  final ui.Offset position;
+  final ui.Offset position; // 正确位置（在完整图像中的坐标）
+  ui.Offset displayPosition; // 显示位置（在屏幕上的坐标）
 
   PuzzlePiece({
     required this.image,
     required this.nodeId,
     required this.position,
-  });
+    ui.Offset? displayPosition,
+  }) : displayPosition = displayPosition ?? position;
+
+  // 复制方法，用于更新显示位置
+  PuzzlePiece copyWith({ui.Offset? displayPosition}) {
+    return PuzzlePiece(
+      image: image,
+      nodeId: nodeId,
+      position: position,
+      displayPosition: displayPosition ?? this.displayPosition,
+    );
+  }
 }
 
 class PuzzleNode {
