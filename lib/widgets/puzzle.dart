@@ -364,11 +364,12 @@ class _PuzzlePageState extends State<PuzzlePage> {
                 final correctPosition = _currentDraggingPiece!.position;
 
                 // 检查是否应该吸附到正确位置
-                const double snapThreshold = 1000.0;
+                const double snapThreshold = 500.0;
                 final distance = (originalPosition - correctPosition).distance;
                 final shouldSnap = distance <= snapThreshold;
                 // print(originalPosition);
                 // print(correctPosition);
+                // print(distance);
                 if (shouldSnap) {
                   // 直接使用拼图的nodeId作为目标位置索引
                   final targetIndex = _currentDraggingPiece!.nodeId;

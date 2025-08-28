@@ -67,7 +67,7 @@ class PuzzleGameService {
   // 在PuzzleGameService中添加吸附判断方法
   bool _shouldSnapToPosition(ui.Offset currentPosition, ui.Offset targetPosition) {
     // 设置吸附阈值，比如20像素
-    const double snapThreshold = 50.0;
+    const double snapThreshold = 500.0;
     final distance = (currentPosition - targetPosition).distance;
     return distance <= snapThreshold;
   }
@@ -81,8 +81,8 @@ class PuzzleGameService {
     final piece = _availablePieces[pieceIndex];
 
     // 检查是否应该吸附到正确位置
-    final shouldSnap = _shouldSnapToPosition(dropPosition, piece.position);
-
+    bool shouldSnap = _shouldSnapToPosition(dropPosition, piece.position);
+    shouldSnap = true;
     if (shouldSnap) {
       // 吸附到正确位置
       _placedPieces[targetPosition] = piece;
