@@ -1,9 +1,7 @@
 //自定义拼图界面
 //->主页
-//临时禁用预览按钮防止崩溃，等待拼图算法完成
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io'; // 导入IO库，用于处理文件
 import 'dart:convert'; // 导入JSON处理库
@@ -22,12 +20,12 @@ class DiyPage extends StatefulWidget {
 }
 
 class _DiyPageState extends State<DiyPage> {
-  File? _selectedImage;
-  final ImagePicker _picker = ImagePicker();
-  bool _showPreview = false;
+  File? _selectedImage; // 导入图片后临时储存的图片
+  String? _savedImagePath; // 保存的图片路径
+  final ImagePicker _picker = ImagePicker(); // 读取图片工具
+  bool _showPreview = false; // 是否已经显示了预览
   int _gridSize = 3; // 默认3x3网格
   List<PuzzlePiece>? _previewPieces; // 用于存储预览拼图块
-  String? _savedImagePath; // 保存的图片路径
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +38,8 @@ class _DiyPageState extends State<DiyPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // 预览图片
-            if (_selectedImage != null) _buildImagePreviewSection(),
+            if (_selectedImage != null || _savedImagePath != null)
+              _buildImagePreviewSection(),
             // 图片选择按钮
             _buildImageSelectionButton(),
             // 开始游戏按钮
@@ -70,6 +69,8 @@ class _DiyPageState extends State<DiyPage> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
+            // 如果正在展示预览，显示图片
+            // 否则构建预览
             child: _showPreview
                 ? _buildPuzzlePreview()
                 : (_selectedImage != null
@@ -108,7 +109,7 @@ class _DiyPageState extends State<DiyPage> {
     return ElevatedButton.icon(
       onPressed: _selectedImage != null
           ? () async {
-              // 这里将来实现开始拼图的逻辑
+              // 信息
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -142,6 +143,45 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
+  // 构建图片选择按钮
+  Widget _buildImageSelectionButton() {
+    return Column(
+      children: [
+        const SizedBox(height: 50),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 图片选择按钮
+            ElevatedButton.icon(
+              onPressed: _pickImage,
+              icon: const Icon(Icons.photo_library),
+              label: const Text('从相册选择'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 20),
+            // 导入配置按钮
+            ElevatedButton.icon(
+              onPressed: _importConfig,
+              icon: const Icon(Icons.download),
+              label: const Text('导入配置'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   // 构建返回主页按钮
   Widget _buildHomeButton(BuildContext context) {
     return ElevatedButton(
@@ -168,7 +208,71 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
+  // 图片预览部分按钮
+  // 难度选择按钮、预览切换按钮、保存按钮
+
+  // 构建难度选择器
+  Widget _buildDifficultySelector() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('难度: ', style: TextStyle(fontSize: 16)),
+        _buildDifficultyButton(3, '简单'),
+        const SizedBox(width: 10),
+        _buildDifficultyButton(4, '中等'),
+        const SizedBox(width: 10),
+        _buildDifficultyButton(5, '困难'),
+      ],
+    );
+  }
+
+  // 构建难度选择按钮
+  Widget _buildDifficultyButton(int size, String label) {
+    return ElevatedButton(
+      onPressed: () => _updateGridSize(size),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _gridSize == size ? Colors.blue : Colors.grey.shade300,
+        foregroundColor: _gridSize == size ? Colors.white : Colors.black,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: Text(label),
+    );
+  }
+
+  // 构建预览切换按钮
+  Widget _buildPreviewToggleButton() {
+    return OutlinedButton.icon(
+      onPressed: _togglePreview,
+      icon: Icon(_showPreview ? Icons.visibility_off : Icons.visibility),
+      label: Text(_showPreview ? '隐藏预览' : '显示预览'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.purple,
+      ),
+    );
+  }
+
+  // 构建保存按钮
+  Widget _buildSaveButton() {
+    return ElevatedButton.icon(
+      onPressed: _selectedImage != null && _savedImagePath == null
+          ? _saveImageAndConfig
+          : null,
+      icon: Icon(_savedImagePath != null ? Icons.check : Icons.save),
+      label: Text(_savedImagePath != null ? '已保存' : '保存图片和配置'),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        backgroundColor: _savedImagePath != null ? Colors.green : Colors.purple,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.grey,
+        disabledForegroundColor: Colors.white,
+      ),
+    );
+  }
+
+  // 以下为工具函数
+
   // 从相册选择图片（仅选择，不自动保存）
+  // 仅得到_selectedImage,_savedImagePath = null
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
@@ -224,7 +328,7 @@ class _DiyPageState extends State<DiyPage> {
     }
   }
 
-  // 保存图片到assets/images/diyImages目录
+  // 保存图片到${appDir.path}/diyImages目录
   Future<String> _saveImageToAssets(File sourceFile) async {
     final appDir = await getApplicationDocumentsDirectory();
     final imagesDir = Directory(path.join(appDir.path, 'diyImages'));
@@ -241,7 +345,7 @@ class _DiyPageState extends State<DiyPage> {
     // 复制文件
     await sourceFile.copy(targetPath);
 
-    // 返回相对路径（用于assets配置）
+    // 返回保存路径
     return targetPath;
   }
 
@@ -249,6 +353,7 @@ class _DiyPageState extends State<DiyPage> {
   Future<void> _createConfigFile() async {
     if (_savedImagePath == null) return;
 
+    // 得到文件路径
     final appDir = await getApplicationDocumentsDirectory();
     final configDir = Directory(path.join(appDir.path, 'configs'));
     if (!await configDir.exists()) {
@@ -258,17 +363,16 @@ class _DiyPageState extends State<DiyPage> {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final configFileName = 'diyPuzzleConf$timestamp.json';
 
+    final configPath = path.join(configDir.path, configFileName);
+    final configFile = File(configPath);
+
     // 创建配置数据
     final configData = {
       'createdAt': DateTime.now().toIso8601String(),
       'imagePath': _savedImagePath,
       'difficulty': _mapGridSizeToDifficulty(_gridSize),
-      'gridSize': _gridSize,
-      'difficultyText': _getDifficultyText(),
     };
 
-    final configPath = path.join(configDir.path, configFileName);
-    final configFile = File(configPath);
     await configFile.writeAsString(json.encode(configData));
 
     if (mounted) {
@@ -282,6 +386,27 @@ class _DiyPageState extends State<DiyPage> {
     }
   }
 
+  // 构建拼图预览
+  Widget _buildPuzzlePreview() {
+    if (_previewPieces == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _gridSize,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+      ),
+      itemCount: _gridSize * _gridSize,
+      itemBuilder: (context, index) {
+        final piece = _previewPieces![index];
+        return RawImage(image: piece.image);
+      },
+    );
+  }
+
   // 显示拼图预览
   void _togglePreview() async {
     if (!_showPreview) {
@@ -293,6 +418,7 @@ class _DiyPageState extends State<DiyPage> {
           _selectedImage!.path,
           _mapGridSizeToDifficulty(_gridSize),
         );
+        // 更新状态
         setState(() {
           _previewPieces = pieces;
           _showPreview = true;
@@ -334,6 +460,20 @@ class _DiyPageState extends State<DiyPage> {
     }
   }
 
+  // 将网格大小映射到难度等级
+  int _mapDifficultToGridSize(int difficulty) {
+    switch (difficulty) {
+      case 1:
+        return 3; // 简单
+      case 2:
+        return 4; // 中等
+      case 3:
+        return 5; // 困难
+      default:
+        return 3; // 默认为简单
+    }
+  }
+
   // 调整网格大小
   void _updateGridSize(int size) {
     setState(() {
@@ -345,122 +485,6 @@ class _DiyPageState extends State<DiyPage> {
         _togglePreview();
       }
     });
-  }
-
-  // 构建难度选择按钮
-  Widget _buildDifficultyButton(int size, String label) {
-    return ElevatedButton(
-      onPressed: () => _updateGridSize(size),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _gridSize == size ? Colors.blue : Colors.grey.shade300,
-        foregroundColor: _gridSize == size ? Colors.white : Colors.black,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      child: Text(label),
-    );
-  }
-
-  // 构建拼图预览
-  Widget _buildPuzzlePreview() {
-    if (_previewPieces == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _gridSize,
-        mainAxisSpacing: 2,
-        crossAxisSpacing: 2,
-      ),
-      itemCount: _gridSize * _gridSize,
-      itemBuilder: (context, index) {
-        final piece = _previewPieces![index];
-        return RawImage(image: piece.image);
-      },
-    );
-  }
-
-  // 构建难度选择器
-  Widget _buildDifficultySelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text('难度: ', style: TextStyle(fontSize: 16)),
-        _buildDifficultyButton(3, '简单'),
-        const SizedBox(width: 10),
-        _buildDifficultyButton(4, '中等'),
-        const SizedBox(width: 10),
-        _buildDifficultyButton(5, '困难'),
-      ],
-    );
-  }
-
-  // 构建预览切换按钮
-  Widget _buildPreviewToggleButton() {
-    return OutlinedButton.icon(
-      onPressed: _togglePreview,
-      icon: Icon(_showPreview ? Icons.visibility_off : Icons.visibility),
-      label: Text(_showPreview ? '隐藏预览' : '显示预览'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.purple,
-      ),
-    );
-  }
-
-  // 构建保存按钮
-  Widget _buildSaveButton() {
-    return ElevatedButton.icon(
-      onPressed: _selectedImage != null && _savedImagePath == null
-          ? _saveImageAndConfig
-          : null,
-      icon: Icon(_savedImagePath != null ? Icons.check : Icons.save),
-      label: Text(_savedImagePath != null ? '已保存' : '保存图片和配置'),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        backgroundColor: _savedImagePath != null ? Colors.green : Colors.purple,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: Colors.grey,
-        disabledForegroundColor: Colors.white,
-      ),
-    );
-  }
-
-  // 构建图片选择按钮
-  Widget _buildImageSelectionButton() {
-    return Column(
-      children: [
-        const SizedBox(height: 50),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.photo_library),
-              label: const Text('从相册选择'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 20),
-            ElevatedButton.icon(
-              onPressed: _importConfig,
-              icon: const Icon(Icons.download),
-              label: const Text('导入配置'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 
   // 导入配置
@@ -479,7 +503,7 @@ class _DiyPageState extends State<DiyPage> {
       final content = await File(pathStr).readAsString();
       final data = json.decode(content);
 
-      if (data is! Map || !data.containsKey('gridSize')) {
+      if (data is! Map || !data.containsKey('difficulty')) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -489,36 +513,27 @@ class _DiyPageState extends State<DiyPage> {
         return;
       }
 
-      final importedGridSize = (data['gridSize'] is int)
-          ? data['gridSize']
-          : int.parse(data['gridSize'].toString());
+      // 读取数据
+      final importedDiffculty = (data['difficulty'] is int)
+          ? data['difficulty']
+          : int.parse(data['difficulty'].toString());
+      final importedGridSize = _mapDifficultToGridSize(importedDiffculty);
       final importedImagePath = data['imagePath'] as String?;
 
-      // 验证图片存在性（如果有 imagePath）
-      bool imageExists = true;
+      // 验证图片路径是否在允许的目录内
+      File? validImageFile;
       if (importedImagePath != null && importedImagePath.isNotEmpty) {
-        final appDir = await getApplicationDocumentsDirectory();
-
-        if (importedImagePath.startsWith('assets/')) {
-          final candidateOnDisk =
-              File(path.join(appDir.path, importedImagePath));
-          if (await candidateOnDisk.exists()) {
-            imageExists = true;
-          } else {
-            try {
-              await rootBundle.load(importedImagePath);
-              imageExists = true;
-            } catch (e) {
-              imageExists = false;
-            }
-          }
-        } else {
-          final f = File(importedImagePath);
-          imageExists = await f.exists();
+        // 验证图片文件是否存在
+        final imageFile = File(importedImagePath);
+        if (await imageFile.exists()) {
+          validImageFile = imageFile;
         }
       }
 
-      if (!imageExists) {
+      // 如果图片路径存在但文件不存在，询问是否重新选择
+      if (importedImagePath != null &&
+          importedImagePath.isNotEmpty &&
+          validImageFile == null) {
         if (mounted) {
           final pick = await showDialog<bool>(
             context: context,
@@ -547,16 +562,9 @@ class _DiyPageState extends State<DiyPage> {
       // 更新状态并刷新UI
       setState(() {
         _gridSize = importedGridSize;
-        if (importedImagePath != null && importedImagePath.isNotEmpty) {
-          final candidate = File(importedImagePath);
-          if (candidate.existsSync()) {
-            _selectedImage = candidate;
-            _savedImagePath = null;
-          } else {
-            // 如果是 assets 路径且打包后可用，保留为 _savedImagePath
-            _savedImagePath = importedImagePath;
-            _selectedImage = null;
-          }
+        if (validImageFile != null) {
+          _selectedImage = validImageFile;
+          _savedImagePath = null;
         }
         _showPreview = false;
       });
