@@ -475,8 +475,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                   if (_currentDraggingPiece != null) {
                     final targetPosition = _currentDraggingPiece!.nodeId;
 
-                    if (targetPosition >= 0 &&
-                        targetPosition < _gameService.placedPieces.length &&
+                    if (_shouldHighlightTarget &&
                         _gameService.placedPieces[targetPosition] == null) {
 
                       // 直接放置拼图块
@@ -566,15 +565,17 @@ class _PuzzlePageState extends State<PuzzlePage> {
           ),
 
           // 可横向滑动的拼图块列表
-          SizedBox(
-            height: 100, // 固定高度确保可以显示
+          Expanded(
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _gameService.availablePieces.length,
               itemBuilder: (context, index) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: _buildDraggablePuzzlePiece(index),
+                  child: Center(
+                    heightFactor: 0.6,
+                    child: _buildDraggablePuzzlePiece(index),
+                  ),
                 );
               },
             ),
