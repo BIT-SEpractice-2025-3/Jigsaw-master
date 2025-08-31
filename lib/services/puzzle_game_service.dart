@@ -36,12 +36,19 @@ class PuzzleGameService {
   final _statusController = StreamController<GameStatus>.broadcast();
   Stream<GameStatus> get statusStream => _statusController.stream;
 
+  // 新增：计时器更新流
+  final _timerController = StreamController<int>.broadcast();
+  Stream<int> get timerStream => _timerController.stream;
+
   // 初始化游戏
   Future<void> initGame(List<PuzzlePiece> pieces, int difficulty) async {
     _difficulty = difficulty;
     _availablePieces = List.from(pieces);
-    _placedPieces = List.filled((difficulty+2) * (difficulty+2), null);
+    // 修正：根据难度计算正确的网格大小
+    final gridSize = difficulty + 2;
+    _placedPieces = List.filled(gridSize * gridSize, null);
     _elapsedSeconds = 0;
+    _timerController.add(_elapsedSeconds); // 初始化时通知UI
     _status = GameStatus.notStarted;
     _statusController.add(_status);
   }
@@ -116,6 +123,7 @@ class PuzzleGameService {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _elapsedSeconds++;
+      _timerController.add(_elapsedSeconds); // 每秒通知UI
     });
   }
 
@@ -129,7 +137,8 @@ class PuzzleGameService {
   void resetGame() {
     _stopTimer();
     _elapsedSeconds = 0;
-    _placedPieces = List.filled(_difficulty * _difficulty, null);
+    _timerController.add(_elapsedSeconds); // 重置时通知UI
+    _placedPieces = List.filled((_difficulty + 2) * (_difficulty + 2), null);
     _status = GameStatus.notStarted;
     _statusController.add(_status);
   }
@@ -162,5 +171,6 @@ class PuzzleGameService {
   void dispose() {
     _stopTimer();
     _statusController.close();
+    _timerController.close(); // 关闭计时器流
   }
 }

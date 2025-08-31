@@ -122,7 +122,19 @@ class _PuzzlePageState extends State<PuzzlePage> {
       if (status == GameStatus.completed) {
         _showCompletionDialog();
       }
-      setState(() {}); // 刷新UI以反映状态变化
+      if (mounted) {
+        setState(() {}); // 刷新UI以反映状态变化
+      }
+    });
+
+    // 新增：监听计时器更新
+    _gameService.timerStream.listen((seconds) {
+      if (mounted) {
+        setState(() {
+          // 只需要调用setState来触发UI刷新,
+          // build方法会自动获取最新的elapsedSeconds
+        });
+      }
     });
   }
 
@@ -611,7 +623,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
         setState(() {
           _currentDraggingPiece = piece;
           _currentDraggingIndex = index;
-          _shouldHighlightTarget = true; // 始终显示高亮
+          _shouldHighlightTarget = false; // 拖动开始时不立即显示高亮
         });
       },
       // 修改拖动更新逻辑，修正距离计算
