@@ -216,8 +216,10 @@ class PuzzleGenerateService {
     for (var node in graph.nodes.values) {
       final row = node.id ~/ gridSize;
       final col = node.id % gridSize;
-      final offsetX = col * pieceWidth;
-      final offsetY = row * pieceHeight;
+
+      // 计算拼图块在原图中的理想位置（左上角）
+      final idealOffsetX = col * pieceWidth;
+      final idealOffsetY = row * pieceHeight;
 
       // --- 5. 在局部坐标系 (0,0) 组装拼图块的轮廓路径 ---
       final localPath = Path();
@@ -276,22 +278,21 @@ class PuzzleGenerateService {
       }
       localPath.close();
 
-      // 将局部路径平移到它在原图上的最终位置
-      final finalPath = localPath.shift(Offset(offsetX, offsetY));
+      // 应用位置偏移调整，将局部路径平移到它在原图上的位置
+      final finalPath = localPath.shift(Offset(idealOffsetX, idealOffsetY));
 
       // --- 6. 执行切割 ---
       final bounds = finalPath.getBounds();
       final recorder = ui.PictureRecorder();
 
-      // 【核心修正】: 创建 Canvas 时不再传入 bounds
+      // 创建 Canvas
       final canvas = Canvas(recorder);
 
-      // 【逻辑修正】:
-      // 1. 将画布的原点移动到 piece 的左上角
+      // 将画布的原点移动到 piece 的左上角
       canvas.translate(-bounds.left, -bounds.top);
-      // 2. 在 piece 的原始位置进行裁剪
+      // 在 piece 的原始位置进行裁剪
       canvas.clipPath(finalPath);
-      // 3. 将整个大图画上去，由于画布已经移动，正确的部分会暴露在裁剪区域内
+      // 将整个大图画上去，裁剪区域内的部分会显示出来
       canvas.drawImage(image, Offset.zero, Paint());
 
       final picture = recorder.endRecording();
@@ -300,11 +301,36 @@ class PuzzleGenerateService {
         bounds.height.ceil(),
       );
 
+      // 关键修复：调整shapePath计算方式
+      // 1. 首先获取本地路径相对于原点(0,0)的边界
+      final localBounds = localPath.getBounds();
+
+      // 2. 计算从本地路径左上角到中心的偏移量（因为localPath基于0,0点）
+      final offsetToLocalCenter = Offset(
+        localBounds.left + localBounds.width / 2,
+        localBounds.top + localBounds.height / 2
+      );
+
+      // 3. 创建一个新路径，将其中心点与(0,0)对齐
+      final centeredPath = Path();
+
+      // 4. 计算平移量，使路径的中心点位于(0,0)
+      final translationOffset = Offset(-offsetToLocalCenter.dx, -offsetToLocalCenter.dy);
+
+      // 5. 应用平移变换
+      centeredPath.addPath(localPath, translationOffset);
+
+      // 计算拼图块的最终中心点位置
+      final centerX = bounds.left + bounds.width / 2;
+      final centerY = bounds.top + bounds.height / 2;
+
       // --- 7. 封装并添加到列表---
       final piece = PuzzlePiece(
         image: pieceImage,
         nodeId: node.id,
-        position: bounds.topLeft,
+        position: Offset(centerX, centerY),
+        shapePath: centeredPath, // 使用重新计算的居中路径
+        bounds: bounds,
       );
       pieces.add(piece);
     }

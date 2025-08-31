@@ -1,7 +1,6 @@
 //启动应用
 import 'package:flutter/material.dart';  // 导入Flutter的材料设计库
 import 'widgets/home.dart';
-import 'widgets/test_page.dart';
 import 'package:flutter/services.dart';  // 导入系统服务包
 
 // 应用程序入口点

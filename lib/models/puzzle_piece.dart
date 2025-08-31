@@ -7,14 +7,22 @@ class PuzzlePiece {
   final ui.Image image;
   final int nodeId;
 
-  /// 这块拼图在完整拼图中的正确左上角坐标。
+  /// 这块拼图在完整拼图中的正确中心点坐标。
   /// UI将直接使用这个坐标来定位拼图块。
   final ui.Offset position;
+
+  /// 拼图块的实际路径形状，用于精确绘制高亮效果
+  final Path shapePath;
+
+  /// 拼图块在原图中的实际边界
+  final Rect bounds;
 
   PuzzlePiece({
     required this.image,
     required this.nodeId,
     required this.position,
+    required this.shapePath,
+    required this.bounds,
   });
 }
 

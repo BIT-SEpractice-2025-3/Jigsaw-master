@@ -64,34 +64,25 @@ class PuzzleGameService {
     }
   }
 
-  // 在PuzzleGameService中添加吸附判断方法
-  bool _shouldSnapToPosition(ui.Offset currentPosition, ui.Offset targetPosition) {
-    // 设置吸附阈值，比如20像素
-    const double snapThreshold = 500.0;
-    final distance = (currentPosition - targetPosition).distance;
-    return distance <= snapThreshold;
-  }
-
-  // 修改placePiece方法，添加吸附逻辑
-  bool placePiece(int pieceIndex, int targetPosition, ui.Offset dropPosition) {
+  // 简化放置拼图的逻辑，不再需要位置参数
+  bool placePiece(int pieceIndex, int targetPosition) {
+    // 验证参数
     if (_status != GameStatus.inProgress) return false;
     if (targetPosition < 0 || targetPosition >= _placedPieces.length) return false;
     if (_placedPieces[targetPosition] != null) return false;
+    if (pieceIndex < 0 || pieceIndex >= _availablePieces.length) return false;
 
+    // 获取并移除待放置的拼图块
     final piece = _availablePieces[pieceIndex];
+    _availablePieces.removeAt(pieceIndex);
 
-    // 检查是否应该吸附到正确位置
-    bool shouldSnap = _shouldSnapToPosition(dropPosition, piece.position);
-    shouldSnap = true;
-    if (shouldSnap) {
-      // 吸附到正确位置
-      _placedPieces[targetPosition] = piece;
-      _availablePieces.removeAt(pieceIndex);
-      _checkGameCompletion();
-      return true;
-    }
+    // 放置到目标位置
+    _placedPieces[targetPosition] = piece;
 
-    return false; // 不满足吸附条件，返回false
+    // 检查游戏是否完成
+    _checkGameCompletion();
+
+    return true;
   }
 
   // 移除已放置的拼图碎片
