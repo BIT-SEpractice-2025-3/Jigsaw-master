@@ -370,7 +370,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
           ? Center(
         child: RawImage(
           image: _targetImage,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
         ),
       )
           : const Center(child: CircularProgressIndicator()),
@@ -390,8 +390,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
     // 取最小值确保为正方形
     final double squareSize = availableWidth < availableHeight ? availableWidth : availableHeight;
     
-    // 计算缩放比例并保存到成员变量
-    _scale = squareSize / Math.max(targetWidth, targetHeight);
+    // 修正：因为图片已经是正方形，所以 targetWidth 和 targetHeight 相等
+    // 直接使用 targetWidth 或 targetHeight 即可
+    _scale = squareSize / targetWidth;
 
     return Center(
       child: Container(

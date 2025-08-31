@@ -23,6 +23,10 @@ class PuzzleGenerateService {
     } else {
       image = await _loadImageFromFile(imageSource);
     }
+
+    // 新增：将图片以中心为基准裁剪为正方形
+    image = await _cropToSquare(image);
+
     _lastLoadedImage = image;
     // 根据难度确定网格大小
     int gridSize = _getDifficultySize(difficulty);
@@ -37,6 +41,26 @@ class PuzzleGenerateService {
     canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), paint);
     return await recorder.endRecording().toImage(width, height);
   }
+
+  // 新增：将图片裁剪为正方形的辅助函数
+  Future<ui.Image> _cropToSquare(ui.Image image) async {
+    final sideLength = min(image.width, image.height);
+    final srcLeft = (image.width - sideLength) / 2.0;
+    final srcTop = (image.height - sideLength) / 2.0;
+
+    final srcRect = Rect.fromLTWH(srcLeft, srcTop, sideLength.toDouble(), sideLength.toDouble());
+    final dstRect = Rect.fromLTWH(0, 0, sideLength.toDouble(), sideLength.toDouble());
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, dstRect); // 使用dstRect优化画布大小
+    final paint = Paint();
+
+    canvas.drawImageRect(image, srcRect, dstRect, paint);
+
+    final picture = recorder.endRecording();
+    return await picture.toImage(sideLength, sideLength);
+  }
+
   static PuzzleEdge? _findEdge(PuzzleGraph graph, int node1Id, int node2Id) {
     if (!graph.nodes.containsKey(node1Id) || !graph.nodes.containsKey(node2Id)) {
       return null;
@@ -195,8 +219,9 @@ class PuzzleGenerateService {
   // 将图片切割成网格状的拼图碎片
   Future<List<PuzzlePiece>> _sliceImage(ui.Image image, int gridSize) async {
     final pieces = <PuzzlePiece>[];
-    final imageWidth = image.width.toDouble();
-    final imageHeight = image.height.toDouble();
+    // 修正：由于图片已被裁剪为正方形，宽度和高度相等。
+    // 我们统一使用 sideLength 来避免混淆。
+    final sideLength = image.width.toDouble();
 
     // --- 1. 获取图蓝图 ---
     final graph = generateGridGraph(gridSize, gridSize);
@@ -208,9 +233,9 @@ class PuzzleGenerateService {
     }
 
     // --- 3. 计算几何尺寸 ---
-    final pieceWidth = imageWidth / gridSize;
-    final pieceHeight = imageHeight / gridSize;
-    final bumpSize = pieceWidth * 0.2;
+    // 修正：使用统一的 sideLength 进行计算
+    final pieceSize = sideLength / gridSize;
+    final bumpSize = pieceSize * 0.2;
 
     // --- 4. 遍历节点生成每个拼图块 ---
     for (var node in graph.nodes.values) {
@@ -218,8 +243,8 @@ class PuzzleGenerateService {
       final col = node.id % gridSize;
 
       // 计算拼图块在原图中的理想位置（左上角）
-      final idealOffsetX = col * pieceWidth;
-      final idealOffsetY = row * pieceHeight;
+      final idealOffsetX = col * pieceSize;
+      final idealOffsetY = row * pieceSize;
 
       // --- 5. 在局部坐标系 (0,0) 组装拼图块的轮廓路径 ---
       final localPath = Path();
@@ -228,10 +253,10 @@ class PuzzleGenerateService {
       final topNeighborId = (row - 1) * gridSize + col;
       final topEdge = _findEdge(graph, node.id, topNeighborId);
       if (topEdge == null) {
-        localPath.lineTo(pieceWidth, 0);
+        localPath.lineTo(pieceSize, 0);
       } else {
         final isConvex = (topEdge.nodeA_id == node.id) ? topEdge.isConvexOnA : !topEdge.isConvexOnA;
-        final edgePath = generatePuzzleEdgePath(pieceWidth, bumpSize, isConvex);
+        final edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         localPath.addPath(edgePath, Offset.zero);
       }
 
@@ -239,12 +264,12 @@ class PuzzleGenerateService {
       final rightNeighborId = row * gridSize + (col + 1);
       final rightEdge = _findEdge(graph, node.id, rightNeighborId);
       if (rightEdge == null) {
-        localPath.lineTo(pieceWidth, pieceHeight);
+        localPath.lineTo(pieceSize, pieceSize);
       } else {
         final isConvex = (rightEdge.nodeA_id == node.id) ? rightEdge.isConvexOnA : !rightEdge.isConvexOnA;
-        var edgePath = generatePuzzleEdgePath(pieceHeight, bumpSize, isConvex);
+        var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
-          ..translate(pieceWidth, 0.0)
+          ..translate(pieceSize, 0.0)
           ..rotateZ(pi / 2);
         localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
       }
@@ -253,12 +278,12 @@ class PuzzleGenerateService {
       final bottomNeighborId = (row + 1) * gridSize + col;
       final bottomEdge = _findEdge(graph, node.id, bottomNeighborId);
       if (bottomEdge == null) {
-        localPath.lineTo(0, pieceHeight);
+        localPath.lineTo(0, pieceSize);
       } else {
         final isConvex = (bottomEdge.nodeA_id == node.id) ? bottomEdge.isConvexOnA : !bottomEdge.isConvexOnA;
-        var edgePath = generatePuzzleEdgePath(pieceWidth, bumpSize, isConvex);
+        var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
-          ..translate(pieceWidth, pieceHeight)
+          ..translate(pieceSize, pieceSize)
           ..rotateZ(pi);
         localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
       }
@@ -270,9 +295,9 @@ class PuzzleGenerateService {
         localPath.lineTo(0, 0);
       } else {
         final isConvex = (leftEdge.nodeA_id == node.id) ? leftEdge.isConvexOnA : !leftEdge.isConvexOnA;
-        var edgePath = generatePuzzleEdgePath(pieceHeight, bumpSize, isConvex);
+        var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
-          ..translate(0.0, pieceHeight)
+          ..translate(0.0, pieceSize)
           ..rotateZ(3 * pi / 2);
         localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
       }
