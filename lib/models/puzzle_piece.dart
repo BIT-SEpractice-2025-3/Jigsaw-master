@@ -7,8 +7,8 @@ class PuzzlePiece {
   final ui.Image image;
   final int nodeId;
 
-  /// 这块拼图在完整拼图中的正确中心点坐标。
-  /// UI将直接使用这个坐标来定位拼图块。
+  /// 这块拼图在完整拼图中的正确物理左上角坐标。
+  /// UI将直接使用这个坐标来定位和旋转拼图块。
   final ui.Offset position;
 
   /// 拼图块的实际路径形状，用于精确绘制高亮效果
@@ -17,12 +17,27 @@ class PuzzlePiece {
   /// 拼图块在原图中的实际边界
   final Rect bounds;
 
+  // 新增：拼图块的基础尺寸（不含凹凸）
+  final double pieceSize;
+
+  // 新增：在 shapePath 和 bounds 坐标系中，物理左上角（旋转中心）的位置
+  final ui.Offset pivot;
+
+  // 新增：邻居信息, key: 'top'|'right'|'bottom'|'left', value: 邻居nodeId
+  final Map<String, int?> neighbors;
+  // 新增：边缘类型, key: 'top'|'right'|'bottom'|'left', value: true为凸, false为凹
+  final Map<String, bool?> edgeTypes;
+
   PuzzlePiece({
     required this.image,
     required this.nodeId,
     required this.position,
     required this.shapePath,
     required this.bounds,
+    required this.pieceSize,
+    required this.pivot,
+    this.neighbors = const {},
+    this.edgeTypes = const {},
   });
 }
 

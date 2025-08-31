@@ -11,8 +11,14 @@ import 'package:flutter/services.dart';
 class PuzzleGenerateService {
   // 添加一个私有的、可空的成员变量来缓存最后一次加载的图片
   ui.Image? _lastLoadedImage;
+  // 新增：缓存最后生成的图，以便游戏服务获取邻居信息
+  PuzzleGraph? _lastGraph;
+
   // 提供一个公共的 getter 方法，让外部可以获取到这个缓存的图片
   ui.Image? get lastLoadedImage => _lastLoadedImage;
+  // 新增：提供 lastGraph 的 getter
+  PuzzleGraph? get lastGraph => _lastGraph;
+
   /// 公开的API：根据图片源和难度生成拼图块列表
   Future<List<PuzzlePiece>> generatePuzzle(
       String imageSource, int difficulty) async {
@@ -31,8 +37,16 @@ class PuzzleGenerateService {
     // 根据难度确定网格大小
     int gridSize = _getDifficultySize(difficulty);
 
+    // 生成图并随机化边缘
+    final graph = generateGridGraph(gridSize, gridSize);
+    final random = Random();
+    for (var edge in graph.edges.values) {
+      edge.isConvexOnA = random.nextBool();
+    }
+    _lastGraph = graph;
+
     // 调用核心的图片切割函数
-    return _sliceImage(image, gridSize);
+    return _sliceImage(image, gridSize, _lastGraph!);
   }
   Future<ui.Image> _createPlaceholderImage(int width, int height) async {
     final recorder = ui.PictureRecorder();
@@ -217,20 +231,14 @@ class PuzzleGenerateService {
     return path;
   }
   // 将图片切割成网格状的拼图碎片
-  Future<List<PuzzlePiece>> _sliceImage(ui.Image image, int gridSize) async {
+  Future<List<PuzzlePiece>> _sliceImage(ui.Image image, int gridSize, PuzzleGraph graph) async {
     final pieces = <PuzzlePiece>[];
     // 修正：由于图片已被裁剪为正方形，宽度和高度相等。
     // 我们统一使用 sideLength 来避免混淆。
     final sideLength = image.width.toDouble();
 
-    // --- 1. 获取图蓝图 ---
-    final graph = generateGridGraph(gridSize, gridSize);
-
-    // --- 2. 随机化边缘 ---
-    final random = Random();
-    for (var edge in graph.edges.values) {
-      edge.isConvexOnA = random.nextBool();
-    }
+    // --- 1. & 2. 获取图蓝图并随机化边缘 ---
+    // 此步骤已移至 generatePuzzle 方法，以确保 _lastGraph 包含随机化信息
 
     // --- 3. 计算几何尺寸 ---
     // 修正：使用统一的 sideLength 进行计算
@@ -248,6 +256,10 @@ class PuzzleGenerateService {
 
       // --- 5. 在局部坐标系 (0,0) 组装拼图块的轮廓路径 ---
       final localPath = Path();
+      // 新增：存储邻居信息
+      final Map<String, int?> neighbors = {'top': null, 'right': null, 'bottom': null, 'left': null};
+      final Map<String, bool?> edgeTypes = {'top': null, 'right': null, 'bottom': null, 'left': null};
+
 
       // -- 上边 --
       final topNeighborId = (row - 1) * gridSize + col;
@@ -255,7 +267,9 @@ class PuzzleGenerateService {
       if (topEdge == null) {
         localPath.lineTo(pieceSize, 0);
       } else {
+        neighbors['top'] = topNeighborId;
         final isConvex = (topEdge.nodeA_id == node.id) ? topEdge.isConvexOnA : !topEdge.isConvexOnA;
+        edgeTypes['top'] = isConvex;
         final edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         localPath.addPath(edgePath, Offset.zero);
       }
@@ -266,7 +280,9 @@ class PuzzleGenerateService {
       if (rightEdge == null) {
         localPath.lineTo(pieceSize, pieceSize);
       } else {
+        neighbors['right'] = rightNeighborId;
         final isConvex = (rightEdge.nodeA_id == node.id) ? rightEdge.isConvexOnA : !rightEdge.isConvexOnA;
+        edgeTypes['right'] = isConvex;
         var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
           ..translate(pieceSize, 0.0)
@@ -280,7 +296,9 @@ class PuzzleGenerateService {
       if (bottomEdge == null) {
         localPath.lineTo(0, pieceSize);
       } else {
+        neighbors['bottom'] = bottomNeighborId;
         final isConvex = (bottomEdge.nodeA_id == node.id) ? bottomEdge.isConvexOnA : !bottomEdge.isConvexOnA;
+        edgeTypes['bottom'] = isConvex;
         var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
           ..translate(pieceSize, pieceSize)
@@ -294,7 +312,9 @@ class PuzzleGenerateService {
       if (leftEdge == null) {
         localPath.lineTo(0, 0);
       } else {
+        neighbors['left'] = leftNeighborId;
         final isConvex = (leftEdge.nodeA_id == node.id) ? leftEdge.isConvexOnA : !leftEdge.isConvexOnA;
+        edgeTypes['left'] = isConvex;
         var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
           ..translate(0.0, pieceSize)
@@ -303,59 +323,50 @@ class PuzzleGenerateService {
       }
       localPath.close();
 
-      // 应用位置偏移调整，将局部路径平移到它在原图上的位置
-      final finalPath = localPath.shift(Offset(idealOffsetX, idealOffsetY));
-
       // --- 6. 执行切割 ---
-      final bounds = finalPath.getBounds();
+      // finalPath 是 localPath 移动到其在完整圖片中的網格位置。这用于从大图中裁切出拼图块的图像。
+      final finalPath = localPath.shift(Offset(idealOffsetX, idealOffsetY));
+      final boundsForSlicing = finalPath.getBounds();
+
       final recorder = ui.PictureRecorder();
-
-      // 创建 Canvas
       final canvas = Canvas(recorder);
-
-      // 将画布的原点移动到 piece 的左上角
-      canvas.translate(-bounds.left, -bounds.top);
-      // 在 piece 的原始位置进行裁剪
+      canvas.translate(-boundsForSlicing.left, -boundsForSlicing.top);
       canvas.clipPath(finalPath);
-      // 将整个大图画上去，裁剪区域内的部分会显示出来
       canvas.drawImage(image, Offset.zero, Paint());
-
       final picture = recorder.endRecording();
-      final pieceImage = await picture.toImage(
-        bounds.width.ceil(),
-        bounds.height.ceil(),
+      final ui.Image pieceImage = await picture.toImage(
+        boundsForSlicing.width.ceil(),
+        boundsForSlicing.height.ceil(),
       );
 
-      // 关键修复：调整shapePath计算方式
-      // 1. 首先获取本地路径相对于原点(0,0)的边界
-      final localBounds = localPath.getBounds();
+      // --- 7. 校准中心基准点并定义拼图块属性 ---
+      // 我们将拼图块的“物理中心”定义为其方形部分的中心。
+      // 我们需要创建一个新的路径 shapePath，使其相对于 pieceImage 的左上角对齐。
+      final shapePath = finalPath.shift(-boundsForSlicing.topLeft);
 
-      // 2. 计算从本地路径左上角到中心的偏移量（因为localPath基于0,0点）
-      final offsetToLocalCenter = Offset(
-        localBounds.left + localBounds.width / 2,
-        localBounds.top + localBounds.height / 2
+      // UI布局的边界框，是基于这个新路径计算的。
+      final uiBounds = shapePath.getBounds();
+
+      // 拼图块在原图中的位置，使用其理想的物理中心。
+      final positionInOriginalImage = Offset(
+          idealOffsetX + pieceSize / 2,
+          idealOffsetY + pieceSize / 2
       );
 
-      // 3. 创建一个新路径，将其中心点与(0,0)对齐
-      final centeredPath = Path();
+      // 计算物理中心（旋转中心）在 pieceImage/shapePath 坐标系中的位置
+      final pivotInShape = positionInOriginalImage - boundsForSlicing.topLeft;
 
-      // 4. 计算平移量，使路径的中心点位于(0,0)
-      final translationOffset = Offset(-offsetToLocalCenter.dx, -offsetToLocalCenter.dy);
-
-      // 5. 应用平移变换
-      centeredPath.addPath(localPath, translationOffset);
-
-      // 计算拼图块的最终中心点位置
-      final centerX = bounds.left + bounds.width / 2;
-      final centerY = bounds.top + bounds.height / 2;
-
-      // --- 7. 封装并添加到列表---
+      // --- 8. 封装并添加到列表---
       final piece = PuzzlePiece(
         image: pieceImage,
         nodeId: node.id,
-        position: Offset(centerX, centerY),
-        shapePath: centeredPath, // 使用重新计算的居中路径
-        bounds: bounds,
+        position: positionInOriginalImage, // 在原图中的物理中心
+        shapePath: shapePath, // 相对 pieceImage 左上角对齐的路径
+        bounds: uiBounds, // 相对 pieceImage 左上角对齐的路径的边界框
+        pieceSize: pieceSize,
+        pivot: pivotInShape, // 新增
+        neighbors: neighbors,
+        edgeTypes: edgeTypes,
       );
       pieces.add(piece);
     }
