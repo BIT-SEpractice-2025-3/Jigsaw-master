@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'puzzle.dart';
+import 'puzzle_master.dart';
 
 class GameSelectionPage extends StatelessWidget {
   const GameSelectionPage({super.key});
@@ -11,7 +12,14 @@ class GameSelectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: null,
+      // 使 AppBar 真正透明并覆盖在页面顶部
+      extendBodyBehindAppBar: true,
+      // 与其他页面保持一致：顶部显示返回按钮
+      appBar: AppBar(
+        leading: const BackButton(),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       backgroundColor: const Color(0xFFF8F9FA),
       body: Stack(
         children: [
@@ -90,11 +98,12 @@ class GameSelectionPage extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 20),
+                // 将原来的“退出”按钮改为进入大师模式（master mode）
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
+                      backgroundColor: Colors.deepPurple,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -102,11 +111,20 @@ class GameSelectionPage extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
-                      Navigator.pop(context); // 退出到主页
+                      // 跳转到大师模式页面（请确保 assets/default.jpg 已配置在项目中）
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PuzzleMasterPage(
+                            imageSource: 'assets/images/default_puzzle.jpg',
+                            difficulty: 1,
+                          ),
+                        ),
+                      );
                     },
-                    icon: const Icon(Icons.exit_to_app),
+                    icon: const Icon(Icons.auto_awesome, size: 20),
                     label: const Text(
-                      '退出',
+                      '进入大师模式',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),

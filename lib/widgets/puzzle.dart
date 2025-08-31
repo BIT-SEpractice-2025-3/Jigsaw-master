@@ -42,34 +42,19 @@ class PuzzlePieceHighlightPainter extends CustomPainter {
       ..color = Colors.green.withOpacity(0.1)
       ..style = PaintingStyle.fill;
 
-    // 修复偏移问题
-    // 首先确定拼图形状与边界的关系
-    final pathBounds = shapePath.getBounds();
+    // 简化绘制逻辑：直接缩放路径以适应画布大小
+    // 原始路径的边界是 `this.bounds`
+    // 画布的大小是 `size`
+    final scaleX = size.width / bounds.width;
+    final scaleY = size.height / bounds.height;
 
-    // 计算形状需要的缩放比例
-    final scaleFactorX = size.width / pathBounds.width;
-    final scaleFactorY = size.height / pathBounds.height;
-    final scaleFactor = Math.min(scaleFactorX, scaleFactorY);
-
-    // 创建变换矩阵
-    final matrix = Matrix4.identity()
-      ..scale(scaleFactor, scaleFactor);
-
-    // 缩放路径
-    final scaledPath = shapePath.transform(matrix.storage);
-    final scaledBounds = scaledPath.getBounds();
-
-    // 计算居中偏移量
-    final centerOffsetX = (size.width - scaledBounds.width) / 2 - scaledBounds.left;
-    final centerOffsetY = (size.height - scaledBounds.height) / 2 - scaledBounds.top;
-
-    // 平移路径到画布中心
-    final centeredPath = scaledPath.shift(Offset(centerOffsetX, centerOffsetY));
+    final matrix = Matrix4.identity()..scale(scaleX, scaleY);
+    final finalPath = shapePath.transform(matrix.storage);
 
     // 绘制填充和边框
-    canvas.drawPath(centeredPath, fillPaint);
-    canvas.drawPath(centeredPath, glowPaint);
-    canvas.drawPath(centeredPath, borderPaint);
+    canvas.drawPath(finalPath, fillPaint);
+    canvas.drawPath(finalPath, glowPaint);
+    canvas.drawPath(finalPath, borderPaint);
   }
 
   @override
@@ -417,34 +402,32 @@ class _PuzzlePageState extends State<PuzzlePage> {
         ),
         child: Stack(
           children: [
-            // 已放置的拼图块（不能移动）- 使用中心点定位
+            // 已放置的拼图块（不能移动）- 使用 pivot 精确定位，使用 image 尺寸渲染
             for (int i = 0; i < _gameService.placedPieces.length; i++)
               if (_gameService.placedPieces[i] != null)
                 Positioned(
-                  // 使用中心点定位，减去宽高的一半得到左上角坐标
                   left: _gameService.placedPieces[i]!.position.dx * _scale -
-                        (_gameService.placedPieces[i]!.bounds.width * _scale / 2),
+                        (_gameService.placedPieces[i]!.pivot.dx * _scale),
                   top: _gameService.placedPieces[i]!.position.dy * _scale -
-                       (_gameService.placedPieces[i]!.bounds.height * _scale / 2),
+                       (_gameService.placedPieces[i]!.pivot.dy * _scale),
                   child: RawImage(
                     image: _gameService.placedPieces[i]!.image,
-                    width: _gameService.placedPieces[i]!.bounds.width * _scale,
-                    height: _gameService.placedPieces[i]!.bounds.height * _scale,
+                    width: (_gameService.placedPieces[i]!.image.width.toDouble()) * _scale,
+                    height: (_gameService.placedPieces[i]!.image.height.toDouble()) * _scale,
                   ),
                 ),
 
-            // 当前拖动的拼图目标位置高亮 - 同样使用中心点定位
+            // 当前拖动的拼图目标位置高亮 - 使用 image 尺寸并与 RawImage 对齐
             if (_shouldHighlightTarget && _currentDraggingPiece != null)
               Positioned(
-                // 修正：使用中心点定位，减去宽高的一半得到左上角坐标
                 left: _currentDraggingPiece!.position.dx * _scale -
-                      (_currentDraggingPiece!.bounds.width * _scale / 2),
+                      (_currentDraggingPiece!.pivot.dx * _scale),
                 top: _currentDraggingPiece!.position.dy * _scale -
-                     (_currentDraggingPiece!.bounds.height * _scale / 2),
+                     (_currentDraggingPiece!.pivot.dy * _scale),
                 child: CustomPaint(
                   size: Size(
-                    _currentDraggingPiece!.bounds.width * _scale,
-                    _currentDraggingPiece!.bounds.height * _scale,
+                    _currentDraggingPiece!.image.width.toDouble() * _scale,
+                    _currentDraggingPiece!.image.height.toDouble() * _scale,
                   ),
                   painter: PuzzlePieceHighlightPainter(
                     image: _currentDraggingPiece!.image,
@@ -465,12 +448,25 @@ class _PuzzlePageState extends State<PuzzlePage> {
                         : Colors.transparent,
                   );
                 },
-                onWillAccept: (data) {
-                  return data != null &&
-                      _gameService.status == GameStatus.inProgress &&
-                      data < _gameService.availablePieces.length;
+                onWillAccept: (nodeId) {
+                  // 修正：现在接收的是 nodeId
+                  return nodeId != null &&
+                      _gameService.status == GameStatus.inProgress;
                 },
-                onAccept: (pieceIndex) {
+                onAccept: (nodeId) {
+                  // 修正：通过 nodeId 找到 pieceIndex
+                  final pieceIndex = _gameService.availablePieces.indexWhere((p) => p.nodeId == nodeId);
+
+                  if (pieceIndex == -1) { // Piece not found
+                    // 重置拖动状态
+                    setState(() {
+                      _currentDraggingPiece = null;
+                      _currentDraggingIndex = -1;
+                      _shouldHighlightTarget = false;
+                    });
+                    return;
+                  }
+
                   // 简化放置逻辑，直接尝试放置拼图块
                   if (_currentDraggingPiece != null) {
                     final targetPosition = _currentDraggingPiece!.nodeId;
@@ -485,7 +481,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                       );
 
                       if (success) {
-                        setState(() {});
+                        // setState is called below
                       }
                     }
                   }
@@ -594,7 +590,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
     final piece = _gameService.availablePieces[index];
 
     return Draggable<int>(
-      data: index,
+      // 修正：传递 nodeId 而不是 index，避免 stale index 问题
+      data: piece.nodeId,
       feedback: Transform.scale(
         scale: 1.1,
         child: RawImage(
@@ -636,7 +633,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
           final RenderBox? puzzleAreaBox =
               _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
 
-          // 如果无法获取，就不进行高亮
           if (puzzleAreaBox == null) {
             setState(() {
               _shouldHighlightTarget = false;
@@ -644,28 +640,23 @@ class _PuzzlePageState extends State<PuzzlePage> {
             return;
           }
 
-          // 将拖动点位置转换为相对于拼图区域的位置
           final localPosition = puzzleAreaBox.globalToLocal(_lastDragPosition);
 
-          // 修复：计算正确的目标中心点位置
-          // 因为实际渲染时我们用的是拼图位置和实际拼图块尺寸，这里也应该保持一致
           final targetCenter = Offset(
             _currentDraggingPiece!.position.dx * _scale,
             _currentDraggingPiece!.position.dy * _scale
           );
 
-          // 使用拖动点到目标中心点的距离作为基准
-          final distance = (localPosition - targetCenter).distance;
-
-          // 计算合理的高亮阈值 - 使用拼图块尺寸的0.8倍
+          // 使用图片真实尺寸计算阈值，保持与渲染一致
           final maxDimension = Math.max(
-            _currentDraggingPiece!.bounds.width * _scale,
-            _currentDraggingPiece!.bounds.height * _scale
+            _currentDraggingPiece!.image.width.toDouble() * _scale,
+            _currentDraggingPiece!.image.height.toDouble() * _scale
           );
           final highlightThreshold = maxDimension * 0.8;
 
+          final distance = (localPosition - targetCenter).distance;
+
           setState(() {
-            // 移除调试打印
             _shouldHighlightTarget = distance <= highlightThreshold;
           });
         }
