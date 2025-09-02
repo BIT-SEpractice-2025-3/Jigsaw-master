@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '/models/puzzle_piece.dart';
 import '/services/puzzle_game_service.dart';
 import '/services/puzzle_generate_service.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 
 class PuzzleMasterPage extends StatefulWidget {
   final String imageSource;
@@ -23,11 +24,46 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   final PuzzleGameService _gameService = PuzzleGameService();
   final PuzzleGenerateService _generateService = PuzzleGenerateService();
 
-  int? _selectedPieceId;
+  // int? _selectedPieceId; // 移除这一行
+  int? _selectedGroupId; // 添加这一行
   bool _gameInitialized = false;
   SnapTarget? _snapTarget;
   Offset? _lastFocalPoint;
+  void _rotateGroup(int groupId, double rotationDelta) {
+    final groupPieces = _gameService.masterPieces.where((p) => p.group == groupId).toList();
+    if (groupPieces.length <= 1) {
+      // 如果组里只有一个块，直接旋转即可
+      if (groupPieces.isNotEmpty) {
+        groupPieces.first.rotation += rotationDelta;
+      }
+      return;
+    }
 
+    // 1. 计算组的中心点 (基于块的 pivot 点的平均值)
+    Offset groupCenter = Offset.zero;
+    for (var p in groupPieces) {
+      groupCenter += p.position;
+    }
+    groupCenter = groupCenter / groupPieces.length.toDouble();
+
+    // 2. 对组内的每个块应用旋转
+    for (var p in groupPieces) {
+      // a. 获取块 pivot 相对于组中心的向量
+      final relativePos = p.position - groupCenter;
+
+      // b. 旋转该向量
+      final rotatedRelativePos = Offset(
+        relativePos.dx * cos(rotationDelta) - relativePos.dy * sin(rotationDelta),
+        relativePos.dx * sin(rotationDelta) + relativePos.dy * cos(rotationDelta),
+      );
+
+      // c. 计算块的新绝对位置 (pivot 的新位置)
+      p.position = groupCenter + rotatedRelativePos;
+
+      // d. 更新块自身的旋转角度
+      p.rotation += rotationDelta;
+    }
+  }
   @override
   void initState() {
     super.initState();
@@ -93,23 +129,41 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                 final boardSize = ui.Size(constraints.maxWidth, constraints.maxHeight);
 
                 if (!_gameInitialized) {
-                  // Use a post-frame callback to avoid calling setState during build.
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _initializeGame(boardSize);
                   });
                 }
 
-                return Container(
-                  width: boardSize.width,
-                  height: boardSize.height,
-                  color: Colors.grey.shade300,
-                  child: Stack(
-                    // Only build the stack if the game is initialized
-                    children: _gameInitialized
-                        ? _gameService.masterPieces.map((pieceState) {
+                // 用 GestureDetector 包裹画板以处理取消选择的逻辑
+                return GestureDetector(
+                  onTap: () {
+                    // 当点击背景时取消选择
+                    if (_selectedGroupId != null) {
+                      setState(() {
+                        _selectedGroupId = null;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: boardSize.width,
+                    height: boardSize.height,
+                    color: Colors.grey.shade300,
+                    child: Stack(
+                      children: [
+                        // 渲染所有拼图块
+                        if (_gameInitialized)
+                          ..._gameService.masterPieces.map((pieceState) {
                             return _buildDraggablePiece(pieceState);
-                          }).toList()
-                        : [const Center(child: CircularProgressIndicator())],
+                          }).toList(),
+
+                        // 在所有组件之上渲染控件
+                        if (_gameInitialized)
+                          _buildGroupControls(),
+
+                        if (!_gameInitialized)
+                          const Center(child: CircularProgressIndicator())
+                      ],
+                    ),
                   ),
                 );
               },
@@ -122,98 +176,40 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   Widget _buildDraggablePiece(MasterPieceState pieceState) {
     final piece = pieceState.piece;
-    // 修正：使用 piece.bounds.size 作为 CustomPaint 的尺寸
     final pieceWidget = CustomPaint(
       painter: _PuzzlePiecePainter(
         piece: piece,
-        isSelected: _selectedPieceId == piece.nodeId,
+        // 如果拼图块所在的分组是被选中的分组，则该块也为选中状态
+        isSelected: _selectedGroupId == pieceState.group,
         snapTarget: _snapTarget,
       ),
       size: piece.bounds.size,
     );
 
-    // 将拼图块和控制器包裹在Stack中
-    final pieceWithControls = Stack(
-      clipBehavior: Clip.none, // 允许箭头绘制在边界之外
-      children: [
-        pieceWidget,
-        // 如果拼图块被选中，则显示旋转控制器
-        if (_selectedPieceId == pieceState.piece.nodeId) ...[
-          // 左上角：逆时针旋转
-          Positioned(
-            left: -12,
-            top: -12,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  // 逆时针旋转45度
-                  pieceState.rotation -= pi / 4;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.rotate_left, color: Colors.blue, size: 80),
-              ),
-            ),
-          ),
-          // 右下角：顺时针旋转
-          Positioned(
-            right: -12,
-            bottom: -12,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  // 顺时针旋转45度
-                  pieceState.rotation += pi / 4;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.7),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.rotate_right, color: Colors.blue, size: 80),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-
     return Transform(
       transform: Matrix4.identity()
-        // 4. 将变换后的拼图块移动到其在画布上的最终位置
         ..translate(pieceState.position.dx, pieceState.position.dy)
-        // 3. 围绕原点（现在是pivot点）进行旋转
         ..rotateZ(pieceState.rotation)
-        // 2. 围绕原点（现在是pivot点）进行缩放
         ..scale(pieceState.scale)
-        // 1. 将拼图块平移，使其物理左上角（pivot）与画布原点对齐
         ..translate(-piece.pivot.dx, -piece.pivot.dy),
       child: GestureDetector(
         onTap: () {
           setState(() {
-            _selectedPieceId = pieceState.piece.nodeId;
+            // 当被点击时，选中整个分组
+            _selectedGroupId = pieceState.group;
           });
         },
         onScaleStart: (details) {
-          // 当手势开始时，如果该拼图块未被选中，则选中它
-          if (_selectedPieceId != pieceState.piece.nodeId) {
+          // 如果手势在一个拼图块上开始，则选中其所在的分组
+          if (_selectedGroupId != pieceState.group) {
             setState(() {
-              _selectedPieceId = pieceState.piece.nodeId;
+              _selectedGroupId = pieceState.group;
             });
           }
           _lastFocalPoint = details.focalPoint;
         },
-        // 使用 onScaleUpdate 统一处理平移、缩放和旋转，以避免手势冲突
         onScaleUpdate: (details) {
-          // 只对选中的拼图块进行变换
-          if (_selectedPieceId != pieceState.piece.nodeId) return;
+          if (_selectedGroupId != pieceState.group) return;
           if (_lastFocalPoint == null) return;
 
           final focalPointDelta = details.focalPoint - _lastFocalPoint!;
@@ -223,66 +219,160 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             final groupID = pieceState.group;
             final groupPieces = _gameService.masterPieces.where((p) => p.group == groupID).toList();
 
-            // --- 组变换 ---
-            // 1. 平移: 移动组内的所有拼图块
+            // --- 分组平移 ---
             for (var p in groupPieces) {
               p.position += focalPointDelta;
             }
 
-            // 2. 旋转: 将组作为一个刚体进行旋转
+            // --- 分组旋转 ---
             if (details.rotation != 0.0) {
-              // a. 计算组的中心点 (基于 pivot 点的平均值)
-              Offset groupCenter = Offset.zero;
-              for (var p in groupPieces) {
-                groupCenter += p.position;
-              }
-              groupCenter = groupCenter / groupPieces.length.toDouble();
-
-              final rotationDelta = details.rotation * 0.5; // 恢复旋转灵敏度并修正方向
-
-              for (var p in groupPieces) {
-                // b. 获取块 pivot 相对于组中心的向量
-                final relativePos = p.position - groupCenter;
-
-                // c. 旋转该向量
-                final rotatedRelativePos = Offset(
-                  relativePos.dx * cos(rotationDelta) - relativePos.dy * sin(rotationDelta),
-                  relativePos.dx * sin(rotationDelta) + relativePos.dy * cos(rotationDelta),
-                );
-
-                // d. 计算新的绝对位置 (pivot 的新位置)
-                p.position = groupCenter + rotatedRelativePos;
-
-                // e. 更新块自身的旋转角度
-                p.rotation += rotationDelta;
-              }
+              final rotationDelta = details.rotation * 0.5;
+              _rotateGroup(groupID, rotationDelta);
             }
 
-            // Check for snapping with the currently dragged piece
             _gameService.checkForSnapping(pieceState.piece.nodeId);
           });
         },
         onScaleEnd: (details) {
           _lastFocalPoint = null;
-          if (_selectedPieceId != pieceState.piece.nodeId) return;
+          if (_selectedGroupId != pieceState.group) return;
 
-          // 如果有可吸附的目标，则执行吸附
+          // 优先处理拼图块之间的吸附
           if (_snapTarget != null && _snapTarget!.draggedPieceId == pieceState.piece.nodeId) {
             setState(() {
               _gameService.snapPieces();
             });
-          } else { // 否则，对齐到45度角
+          } else {
+            // 如果没有发生吸附，则执行角度对齐
             setState(() {
-              // 计算最接近的45度倍数角度
-              const baseAngle = pi / 4; // 45 degrees in radians
+              final groupID = pieceState.group;
               final currentRotation = pieceState.rotation;
+              const baseAngle = pi / 4; // 45度
+
+              // 计算最接近的45度倍数角度
               final snappedRotation = (currentRotation / baseAngle).round() * baseAngle;
-              pieceState.rotation = snappedRotation;
+
+              // 计算需要修正的角度差值
+              final rotationDelta = snappedRotation - currentRotation;
+
+              // 如果角度差很小，则无需旋转，避免不必要的重绘
+              if (rotationDelta.abs() > 0.001) {
+                _rotateGroup(groupID, rotationDelta);
+              }
             });
           }
         },
-        child: pieceWithControls,
+        // 子组件现在只有拼图块本身，不再包含旋转控件
+        child: pieceWidget,
       ),
+    );
+  }
+// 在 _PuzzleMasterPageState 类中添加这个新方法
+// 在 _PuzzleMasterPageState 类中，用下面的代码替换整个 _buildGroupControls 方法
+
+  Widget _buildGroupControls() {
+    if (_selectedGroupId == null) {
+      return const SizedBox.shrink();
+    }
+
+    final groupPieces = _gameService.masterPieces.where((p) => p.group == _selectedGroupId!).toList();
+    if (groupPieces.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // 步骤 1: 计算整个分组在屏幕上的精确视觉边界框 (这部分逻辑是正确的，保持不变)
+    double minX = double.infinity;
+    double minY = double.infinity;
+    double maxX = double.negativeInfinity;
+    double maxY = double.negativeInfinity;
+
+    for (var pieceState in groupPieces) {
+      final piece = pieceState.piece;
+      final transform = Matrix4.identity()
+        ..translate(pieceState.position.dx, pieceState.position.dy)
+        ..rotateZ(pieceState.rotation)
+        ..scale(pieceState.scale)
+        ..translate(-piece.pivot.dx, -piece.pivot.dy);
+
+      final corners = [
+        Offset(piece.bounds.left, piece.bounds.top),
+        Offset(piece.bounds.right, piece.bounds.top),
+        Offset(piece.bounds.right, piece.bounds.bottom),
+        Offset(piece.bounds.left, piece.bounds.bottom),
+      ];
+
+      for (var corner in corners) {
+        final transformedVector = transform.transform3(Vector3(corner.dx, corner.dy, 0));
+        minX = min(minX, transformedVector.x);
+        minY = min(minY, transformedVector.y);
+        maxX = max(maxX, transformedVector.x);
+        maxY = max(maxY, transformedVector.y);
+      }
+    }
+
+    // 得到最终的视觉边界矩形
+    final groupBounds = Rect.fromLTRB(minX, minY, maxX, maxY);
+
+    // --- 步骤 2: 简化定位逻辑 ---
+    // 直接使用边界框的角点来定位按钮，不再计算半径和角度
+
+    const iconSize = 32.0;
+    const touchTargetSize = 48.0;
+    const offset = touchTargetSize / 2; // 偏移量，使得按钮的中心点对齐到角点
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // 左上角旋转按钮
+        Positioned(
+          // 直接定位到边界框的左上角
+          left: groupBounds.left - offset,
+          top: groupBounds.top - offset,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _rotateGroup(_selectedGroupId!, -pi / 4); // 逆时针旋转45度
+              });
+              _gameService.checkForSnapping(groupPieces.first.piece.nodeId);
+            },
+            child: Container(
+              width: touchTargetSize,
+              height: touchTargetSize,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.85),
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+              ),
+              child: const Icon(Icons.rotate_left, color: Colors.blue, size: iconSize),
+            ),
+          ),
+        ),
+
+        // 右下角旋转按钮
+        Positioned(
+          // 直接定位到边界框的右下角
+          left: groupBounds.right - offset,
+          top: groupBounds.bottom - offset,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _rotateGroup(_selectedGroupId!, pi / 4); // 顺时针旋转45度
+              });
+              _gameService.checkForSnapping(groupPieces.first.piece.nodeId);
+            },
+            child: Container(
+              width: touchTargetSize,
+              height: touchTargetSize,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.85),
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+              ),
+              child: const Icon(Icons.rotate_right, color: Colors.blue, size: iconSize),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
