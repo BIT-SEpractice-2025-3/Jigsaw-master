@@ -29,181 +29,621 @@ class _DiyPageState extends State<DiyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text("自定义拼图"),
+        title: const Text(
+          "自定义拼图",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D2B55),
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFF6A5ACD)),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 预览图片
-            if (_selectedImage != null || _savedImagePath != null)
-              _buildImagePreviewSection(),
-            // 图片选择按钮
-            _buildImageSelectionButton(),
-            // 开始游戏按钮
-            if (_selectedImage != null || _savedImagePath != null) ...[
-              const SizedBox(height: 20),
-              _buildStartPuzzleButton(context),
+      body: Stack(
+        children: [
+          // 背景装饰
+          _buildBackgroundDecoration(context),
+
+          // 主要内容
+          SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 20.0 : 40.0,
+              vertical: 24.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 页面标题
+                _buildPageTitle(),
+                SizedBox(height: isSmallScreen ? 40 : 50),
+
+                // 预览图片
+                if (_selectedImage != null || _savedImagePath != null) ...[
+                  _buildImagePreviewSection(),
+                  SizedBox(height: isSmallScreen ? 30 : 40),
+                ],
+
+                // 图片选择按钮
+                _buildImageSelectionButton(),
+                SizedBox(height: isSmallScreen ? 30 : 40),
+
+                // 开始游戏按钮
+                if (_selectedImage != null || _savedImagePath != null) ...[
+                  _buildStartPuzzleButton(context),
+                  SizedBox(height: isSmallScreen ? 30 : 40),
+                ],
+
+                // 返回主页按钮
+                _buildHomeButton(context),
+
+                // 底部额外间距，确保内容不被遮挡
+                SizedBox(height: isSmallScreen ? 30 : 40),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建背景装饰
+  Widget _buildBackgroundDecoration(BuildContext context) {
+    return Stack(
+      children: [
+        // 背景渐变
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFF3F4F8),
+                Color(0xFFE8EAF6),
+                Color(0xFFF3F4F8),
+              ],
+            ),
+          ),
+        ),
+
+        // 左上角拼图元素
+        Positioned(
+          top: -30,
+          left: -30,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x306A5ACD),
+            size: 120,
+            rotation: 0.2,
+          ),
+        ),
+
+        // 右上角拼图元素
+        Positioned(
+          top: 50,
+          right: -40,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x30FF9800),
+            size: 100,
+            rotation: -0.3,
+          ),
+        ),
+
+        // 左下角拼图元素
+        Positioned(
+          bottom: 80,
+          left: -50,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x30E91E63),
+            size: 110,
+            rotation: 0.7,
+          ),
+        ),
+
+        // 右下角拼图元素
+        Positioned(
+          bottom: -40,
+          right: -30,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x304CAF50),
+            size: 130,
+            rotation: -0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 构建拼图装饰元素
+  Widget _buildPuzzleDecoration({
+    required Color color,
+    required double size,
+    double rotation = 0.0,
+  }) {
+    return Transform.rotate(
+      angle: rotation,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: CustomPaint(
+          painter: _PuzzlePiecePainter(color: color),
+        ),
+      ),
+    );
+  }
+
+  // 构建页面标题
+  Widget _buildPageTitle() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6A5ACD).withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.photo_library_rounded,
+            size: 48,
+            color: Color(0xFF6A5ACD),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          '自定义拼图',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D2B55),
+            letterSpacing: 1.0,
+            shadows: [
+              Shadow(
+                blurRadius: 4.0,
+                color: Colors.black12,
+                offset: Offset(2.0, 2.0),
+              ),
             ],
-            const SizedBox(height: 40),
-            // 返回主页按钮
-            _buildHomeButton(context),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text(
+            '上传您的图片，创建专属拼图挑战',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 构建图片预览部分
+  Widget _buildImagePreviewSection() {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+    final imageSize = isSmallScreen
+        ? screenSize.width * 0.75
+        : 320.0; // 移动端使用屏幕宽度的75%，桌面端固定320px
+
+    return Material(
+      borderRadius: BorderRadius.circular(28),
+      elevation: 12,
+      shadowColor: const Color(0xFF6A5ACD).withOpacity(0.2),
+      child: Container(
+        padding: EdgeInsets.all(isSmallScreen ? 24 : 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: const Color(0xFF6A5ACD).withOpacity(0.15),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            // 图片预览容器
+            Container(
+              width: imageSize,
+              height: imageSize,
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: const Color(0xFF6A5ACD).withOpacity(0.25), width: 2),
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF6A5ACD).withOpacity(0.05),
+                    const Color(0xFFE8EAF6),
+                  ],
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: _showPreview
+                    ? _buildPuzzlePreview()
+                    : (_selectedImage != null
+                        ? Image.file(
+                            _selectedImage!,
+                            width: imageSize - 4,
+                            height: imageSize - 4,
+                            fit: BoxFit.contain,
+                          )
+                        : (_savedImagePath != null
+                            ? Image.asset(
+                                _savedImagePath!,
+                                width: imageSize - 4,
+                                height: imageSize - 4,
+                                fit: BoxFit.contain,
+                              )
+                            : _buildPlaceholder(imageSize))),
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 24 : 28),
+
+            // 难度选择
+            _buildDifficultySelector(),
+            SizedBox(height: isSmallScreen ? 20 : 24),
+
+            // 预览切换按钮
+            _buildPreviewToggleButton(),
+            SizedBox(height: isSmallScreen ? 20 : 24),
+
+            // 保存按钮
+            _buildSaveButton(),
+
+            // 底部空白间距
+            SizedBox(height: isSmallScreen ? 40 : 60),
           ],
         ),
       ),
     );
   }
 
-  // 构建图片预览部分
-  Widget _buildImagePreviewSection() {
-    return Column(
-      children: [
-        Container(
-          width: 250,
-          height: 250,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey, width: 2),
-            borderRadius: BorderRadius.circular(10),
+  // 构建占位符
+  Widget _buildPlaceholder(double size) {
+    return Container(
+      width: size - 4,
+      height: size - 4,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.photo_library_outlined,
+            size: size * 0.2,
+            color: const Color(0xFF6A5ACD).withOpacity(0.6),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            // 如果正在展示预览，显示图片
-            // 否则构建预览
-            child: _showPreview
-                ? _buildPuzzlePreview()
-                : (_selectedImage != null
-                ? Image.file(
-              _selectedImage!,
-              width: 246,
-              height: 246,
-              fit: BoxFit.contain,
-            )
-                : (_savedImagePath != null
-                ? Image.asset(
-              _savedImagePath!,
-              width: 246,
-              height: 246,
-              fit: BoxFit.contain,
-            )
-                : Container())),
+          const SizedBox(height: 12),
+          Text(
+            '选择图片开始',
+            style: TextStyle(
+              fontSize: 16,
+              color: const Color(0xFF6A5ACD).withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        const SizedBox(height: 15),
-        // 难度选择
-        _buildDifficultySelector(),
-        const SizedBox(height: 15),
-        // 预览切换按钮
-        _buildPreviewToggleButton(),
-        const SizedBox(height: 15),
-        // 保存按钮
-        _buildSaveButton(),
-        const SizedBox(height: 20),
-      ],
+        ],
+      ),
     );
   }
 
   // 构建开始拼图按钮
   Widget _buildStartPuzzleButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: _selectedImage != null
-          ? () async {
-        // 信息
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
-            backgroundColor: Colors.green,
-          ),
-        );
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
 
-        // 跳转到拼图游戏页面，优先使用保存的路径，否则使用临时路径
-        final imagePath = _savedImagePath ?? _selectedImage!.path;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PuzzlePage(
-              imagePath: imagePath,
-              difficulty: _mapGridSizeToDifficulty(_gridSize),
-            ),
+    return Container(
+      width: isSmallScreen ? double.infinity : null,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: _selectedImage != null
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFFF9800),
+                  const Color(0xFFFF9800).withOpacity(0.8),
+                ],
+              )
+            : null,
+        boxShadow: _selectedImage != null
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFFF9800).withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
+      ),
+      child: ElevatedButton.icon(
+        onPressed: _selectedImage != null
+            ? () async {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+
+                final imagePath = _savedImagePath ?? _selectedImage!.path;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PuzzlePage(
+                      imagePath: imagePath,
+                      difficulty: _mapGridSizeToDifficulty(_gridSize),
+                    ),
+                  ),
+                );
+              }
+            : null,
+        icon: const Icon(Icons.play_arrow_rounded, size: 24),
+        label: const Text(
+          '开始拼图',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _selectedImage != null
+              ? Colors.transparent
+              : Colors.grey.shade300,
+          foregroundColor:
+              _selectedImage != null ? Colors.white : Colors.grey.shade600,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 24 : 30,
+            vertical: isSmallScreen ? 18 : 15,
           ),
-        );
-      }
-          : null,
-      icon: const Icon(Icons.play_arrow),
-      label: const Text('开始拼图', style: TextStyle(fontSize: 18)),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-        backgroundColor: _selectedImage != null ? Colors.orange : Colors.grey,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: Colors.grey.shade400,
-        disabledForegroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
       ),
     );
   }
 
   // 构建图片选择按钮
   Widget _buildImageSelectionButton() {
-    return Column(
-      children: [
-        const SizedBox(height: 50),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 图片选择按钮
-            ElevatedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.photo_library),
-              label: const Text('从相册选择'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isSmallScreen ? double.infinity : 650,
+        ),
+        child: Material(
+          borderRadius: BorderRadius.circular(28),
+          elevation: 8,
+          shadowColor: const Color(0xFF6A5ACD).withOpacity(0.15),
+          child: Container(
+            padding: EdgeInsets.all(isSmallScreen ? 28 : 32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: const Color(0xFF6A5ACD).withOpacity(0.12),
+                width: 1,
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  const Color(0xFF6A5ACD).withOpacity(0.02),
+                ],
               ),
             ),
-            const SizedBox(width: 20),
-            // 导入配置按钮
-            ElevatedButton.icon(
-              onPressed: _importConfig,
-              icon: const Icon(Icons.download),
-              label: const Text('导入配置'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
+            child: Column(
+              children: [
+                if (isSmallScreen)
+                  // 移动端：垂直布局
+                  Column(
+                    children: [
+                      _buildActionButton(
+                        icon: Icons.photo_library_rounded,
+                        label: '从相册选择',
+                        color: const Color(0xFF6A5ACD),
+                        onPressed: _pickImage,
+                        isFullWidth: true,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildActionButton(
+                        icon: Icons.download_rounded,
+                        label: '导入配置',
+                        color: const Color(0xFF4CAF50),
+                        onPressed: _importConfig,
+                        isFullWidth: true,
+                      ),
+                    ],
+                  )
+                else
+                  // 桌面端：水平布局
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionButton(
+                          icon: Icons.photo_library_rounded,
+                          label: '从相册选择',
+                          color: const Color(0xFF6A5ACD),
+                          onPressed: _pickImage,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: _buildActionButton(
+                          icon: Icons.download_rounded,
+                          label: '导入配置',
+                          color: const Color(0xFF4CAF50),
+                          onPressed: _importConfig,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  } // 构建操作按钮
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+    bool isFullWidth = false,
+  }) {
+    return Container(
+      width: isFullWidth ? double.infinity : null,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color,
+            color.withOpacity(0.85),
           ],
         ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.25),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   // 构建返回主页按钮
   Widget _buildHomeButton(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-              (route) => false,
-        );
-      },
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return Container(
+      width: isSmallScreen ? double.infinity : null,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF6A5ACD).withOpacity(0.3),
+          width: 2,
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            const Color(0xFF6A5ACD).withOpacity(0.05),
+          ],
+        ),
       ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.home),
-          SizedBox(width: 10),
-          Text('返回主页', style: TextStyle(fontSize: 18)),
-        ],
+      child: OutlinedButton(
+        onPressed: () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+            (route) => false,
+          );
+        },
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF6A5ACD),
+          backgroundColor: Colors.transparent,
+          side: BorderSide.none,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 16 : 40,
+            vertical: isSmallScreen ? 16 : 15,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: isSmallScreen ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.home_rounded, size: 20),
+            const SizedBox(width: 10),
+            const Text(
+              '返回主页',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -213,58 +653,269 @@ class _DiyPageState extends State<DiyPage> {
 
   // 构建难度选择器
   Widget _buildDifficultySelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text('难度: ', style: TextStyle(fontSize: 16)),
-        _buildDifficultyButton(3, '简单'),
-        const SizedBox(width: 10),
-        _buildDifficultyButton(4, '中等'),
-        const SizedBox(width: 10),
-        _buildDifficultyButton(5, '困难'),
-      ],
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 20 : 32,
+        vertical: 24,
+      ),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            Colors.grey.shade50,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF6A5ACD).withOpacity(0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6A5ACD).withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6A5ACD).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.tune_rounded,
+                  color: const Color(0xFF6A5ACD),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                '难度选择',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2D2B55),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          isSmallScreen
+              ? Column(
+                  children: [
+                    _buildDifficultyButton(3, '简单 (3x3)', Icons.star_outline),
+                    const SizedBox(height: 12),
+                    _buildDifficultyButton(4, '中等 (4x4)', Icons.stars),
+                    const SizedBox(height: 12),
+                    _buildDifficultyButton(5, '困难 (5x5)', Icons.star_rate),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                        child: _buildDifficultyButton(
+                            3, '简单', Icons.star_outline)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                        child: _buildDifficultyButton(4, '中等', Icons.stars)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                        child:
+                            _buildDifficultyButton(5, '困难', Icons.star_rate)),
+                  ],
+                ),
+        ],
+      ),
     );
   }
 
   // 构建难度选择按钮
-  Widget _buildDifficultyButton(int size, String label) {
-    return ElevatedButton(
-      onPressed: () => _updateGridSize(size),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _gridSize == size ? Colors.blue : Colors.grey.shade300,
-        foregroundColor: _gridSize == size ? Colors.white : Colors.black,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  Widget _buildDifficultyButton(int size, String label, [IconData? icon]) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+    final isSelected = _gridSize == size;
+
+    return Container(
+      height: isSmallScreen ? 52 : 48,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: isSelected
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF6A5ACD),
+                  const Color(0xFF6A5ACD).withOpacity(0.8),
+                ],
+              )
+            : null,
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF6A5ACD).withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
-      child: Text(label),
+      child: ElevatedButton(
+        onPressed: () => _updateGridSize(size),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isSelected ? Colors.transparent : Colors.white,
+          foregroundColor: isSelected ? Colors.white : const Color(0xFF2D2B55),
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 8 : 12,
+            vertical: 8,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: isSmallScreen ? 16 : 18,
+                color: isSelected ? Colors.white : const Color(0xFF6A5ACD),
+              ),
+              const SizedBox(height: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12 : 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   // 构建预览切换按钮
   Widget _buildPreviewToggleButton() {
-    return OutlinedButton.icon(
-      onPressed: _togglePreview,
-      icon: Icon(_showPreview ? Icons.visibility_off : Icons.visibility),
-      label: Text(_showPreview ? '隐藏预览' : '显示预览'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.purple,
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+
+    return Container(
+      width: isSmallScreen ? double.infinity : null,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFE91E63).withOpacity(0.3),
+          width: 4,
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white,
+            const Color(0xFFE91E63).withOpacity(0.05),
+          ],
+        ),
+      ),
+      child: OutlinedButton.icon(
+        onPressed: _togglePreview,
+        icon: Icon(_showPreview
+            ? Icons.visibility_off_rounded
+            : Icons.visibility_rounded),
+        label: Text(_showPreview ? '隐藏预览' : '显示预览'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFE91E63),
+          backgroundColor: Colors.transparent,
+          side: BorderSide.none,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 32 : 40,
+            vertical: isSmallScreen ? 32 : 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }
 
   // 构建保存按钮
   Widget _buildSaveButton() {
-    return ElevatedButton.icon(
-      onPressed: _selectedImage != null && _savedImagePath == null
-          ? _saveImageAndConfig
-          : null,
-      icon: Icon(_savedImagePath != null ? Icons.check : Icons.save),
-      label: Text(_savedImagePath != null ? '已保存' : '保存图片和配置'),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        backgroundColor: _savedImagePath != null ? Colors.green : Colors.purple,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: Colors.grey,
-        disabledForegroundColor: Colors.white,
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 600;
+    final isSaved = _savedImagePath != null;
+    final canSave = _selectedImage != null && _savedImagePath == null;
+
+    return Container(
+      width: isSmallScreen ? double.infinity : null,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: canSave || isSaved
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isSaved
+                    ? [
+                        Colors.green,
+                        Colors.green.withOpacity(0.8),
+                      ]
+                    : [
+                        const Color(0xFFFF9800),
+                        const Color(0xFFFF9800).withOpacity(0.8),
+                      ],
+              )
+            : null,
+        boxShadow: canSave || isSaved
+            ? [
+                BoxShadow(
+                  color: (isSaved ? Colors.green : const Color(0xFFFF9800))
+                      .withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: ElevatedButton.icon(
+        onPressed: canSave ? _saveImageAndConfig : null,
+        icon: Icon(isSaved ? Icons.check_circle_rounded : Icons.save_rounded),
+        label: Text(isSaved ? '已保存' : '保存图片和配置'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              canSave || isSaved ? Colors.transparent : Colors.grey.shade300,
+          foregroundColor:
+              canSave || isSaved ? Colors.white : Colors.grey.shade600,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 32 : 40,
+            vertical: isSmallScreen ? 32 : 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }
@@ -582,4 +1233,61 @@ class _DiyPageState extends State<DiyPage> {
       }
     }
   }
+}
+
+// 拼图块绘制类
+class _PuzzlePiecePainter extends CustomPainter {
+  final Color color;
+
+  _PuzzlePiecePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // 绘制拼图凹凸形状
+    _drawPuzzleTab(canvas, center, radius, 0); // 上
+    _drawPuzzleTab(canvas, center, radius, 1); // 右
+    _drawPuzzleTab(canvas, center, radius, 2); // 下
+    _drawPuzzleTab(canvas, center, radius, 3); // 左
+  }
+
+  void _drawPuzzleTab(Canvas canvas, Offset center, double radius, int side) {
+    final path = Path();
+    final tabWidth = radius / 2;
+
+    switch (side) {
+      case 0: // 上
+        path.moveTo(center.dx - tabWidth, center.dy - radius);
+        path.quadraticBezierTo(center.dx, center.dy - radius - tabWidth,
+            center.dx + tabWidth, center.dy - radius);
+        break;
+      case 1: // 右
+        path.moveTo(center.dx + radius, center.dy - tabWidth);
+        path.quadraticBezierTo(center.dx + radius + tabWidth, center.dy,
+            center.dx + radius, center.dy + tabWidth);
+        break;
+      case 2: // 下
+        path.moveTo(center.dx + tabWidth, center.dy + radius);
+        path.quadraticBezierTo(center.dx, center.dy + radius + tabWidth,
+            center.dx - tabWidth, center.dy + radius);
+        break;
+      case 3: // 左
+        path.moveTo(center.dx - radius, center.dy + tabWidth);
+        path.quadraticBezierTo(center.dx - radius - tabWidth, center.dy,
+            center.dx - radius, center.dy - tabWidth);
+        break;
+    }
+
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.white.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
