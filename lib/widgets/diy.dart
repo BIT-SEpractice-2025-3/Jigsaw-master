@@ -7,7 +7,6 @@ import 'dart:io'; // 导入IO库，用于处理文件
 import 'dart:convert'; // 导入JSON处理库
 import 'package:path/path.dart' as path; // 导入路径处理库
 import 'package:file_picker/file_picker.dart';
-import 'home.dart';
 import 'puzzle.dart';
 import '../services/puzzle_generate_service.dart';
 import '../models/puzzle_piece.dart';
@@ -26,6 +25,31 @@ class _DiyPageState extends State<DiyPage> {
   bool _showPreview = false; // 是否已经显示了预览
   int _gridSize = 3; // 默认3x3网格
   List<PuzzlePiece>? _previewPieces; // 用于存储预览拼图块
+
+  // 难度选项定义
+  final List<Map<String, dynamic>> _difficultyOptions = [
+    {
+      'value': 3,
+      'label': '简单',
+      'description': '3x3 (9块)',
+      'icon': Icons.sentiment_satisfied,
+      'color': const Color(0xFF4CAF50),
+    },
+    {
+      'value': 4,
+      'label': '中等',
+      'description': '4x4 (16块)',
+      'icon': Icons.sentiment_neutral,
+      'color': const Color(0xFFFF9800),
+    },
+    {
+      'value': 5,
+      'label': '困难',
+      'description': '5x5 (25块)',
+      'icon': Icons.sentiment_dissatisfied,
+      'color': const Color(0xFFE91E63),
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +103,6 @@ class _DiyPageState extends State<DiyPage> {
                   _buildStartPuzzleButton(context),
                   SizedBox(height: isSmallScreen ? 30 : 40),
                 ],
-
-                // 返回主页按钮
-                _buildHomeButton(context),
 
                 // 底部额外间距，确保内容不被遮挡
                 SizedBox(height: isSmallScreen ? 30 : 40),
@@ -590,64 +611,6 @@ class _DiyPageState extends State<DiyPage> {
     );
   }
 
-  // 构建返回主页按钮
-  Widget _buildHomeButton(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 600;
-
-    return Container(
-      width: isSmallScreen ? double.infinity : null,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF6A5ACD).withOpacity(0.3),
-          width: 2,
-        ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFF6A5ACD).withOpacity(0.05),
-          ],
-        ),
-      ),
-      child: OutlinedButton(
-        onPressed: () {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
-            (route) => false,
-          );
-        },
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF6A5ACD),
-          backgroundColor: Colors.transparent,
-          side: BorderSide.none,
-          padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 16 : 40,
-            vertical: isSmallScreen ? 16 : 15,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: isSmallScreen ? MainAxisSize.max : MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.home_rounded, size: 20),
-            const SizedBox(width: 10),
-            const Text(
-              '返回主页',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // 图片预览部分按钮
   // 难度选择按钮、预览切换按钮、保存按钮
 
@@ -658,8 +621,8 @@ class _DiyPageState extends State<DiyPage> {
 
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 20 : 32,
-        vertical: 24,
+        horizontal: isSmallScreen ? 20 : 24,
+        vertical: 20,
       ),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -713,105 +676,145 @@ class _DiyPageState extends State<DiyPage> {
             ],
           ),
           const SizedBox(height: 20),
-          isSmallScreen
-              ? Column(
-                  children: [
-                    _buildDifficultyButton(3, '简单 (3x3)', Icons.star_outline),
-                    const SizedBox(height: 12),
-                    _buildDifficultyButton(4, '中等 (4x4)', Icons.stars),
-                    const SizedBox(height: 12),
-                    _buildDifficultyButton(5, '困难 (5x5)', Icons.star_rate),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Expanded(
-                        child: _buildDifficultyButton(
-                            3, '简单', Icons.star_outline)),
-                    const SizedBox(width: 16),
-                    Expanded(
-                        child: _buildDifficultyButton(4, '中等', Icons.stars)),
-                    const SizedBox(width: 16),
-                    Expanded(
-                        child:
-                            _buildDifficultyButton(5, '困难', Icons.star_rate)),
-                  ],
-                ),
+          _buildDropdownSelector(),
         ],
       ),
     );
   }
 
-  // 构建难度选择按钮
-  Widget _buildDifficultyButton(int size, String label, [IconData? icon]) {
+  // 构建下拉选择器
+  Widget _buildDropdownSelector() {
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
-    final isSelected = _gridSize == size;
 
     return Container(
-      height: isSmallScreen ? 52 : 48,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: isSelected
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF6A5ACD),
-                  const Color(0xFF6A5ACD).withOpacity(0.8),
-                ],
-              )
-            : null,
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: const Color(0xFF6A5ACD).withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ]
-            : [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+      width: double.infinity,
+      constraints: BoxConstraints(
+        minHeight: isSmallScreen ? 50 : 48,
+        maxHeight: isSmallScreen ? 60 : 56,
       ),
-      child: ElevatedButton(
-        onPressed: () => _updateGridSize(size),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.transparent : Colors.white,
-          foregroundColor: isSelected ? Colors.white : const Color(0xFF2D2B55),
-          shadowColor: Colors.transparent,
-          padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 8 : 12,
-            vertical: 8,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF6A5ACD).withOpacity(0.2),
+          width: 1.5,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: isSmallScreen ? 16 : 18,
-                color: isSelected ? Colors.white : const Color(0xFF6A5ACD),
-              ),
-              const SizedBox(height: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 12 : 13,
-                fontWeight: FontWeight.w600,
-              ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _gridSize,
+          isExpanded: true,
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6A5ACD).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
+            child: const Icon(
+              Icons.keyboard_arrow_down,
+              color: Color(0xFF6A5ACD),
+              size: 20,
+            ),
+          ),
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          elevation: 16,
+          style: const TextStyle(
+            color: Color(0xFF2D2B55),
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+          selectedItemBuilder: (BuildContext context) {
+            return _difficultyOptions.map<Widget>((option) {
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: isSmallScreen ? 12 : 10,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: (option['color'] as Color).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        option['icon'] as IconData,
+                        color: option['color'] as Color,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${option['label']} ${option['description']}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2D2B55),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList();
+          },
+          items: _difficultyOptions.map<DropdownMenuItem<int>>((option) {
+            return DropdownMenuItem<int>(
+              value: option['value'] as int,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: (option['color'] as Color).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        option['icon'] as IconData,
+                        color: option['color'] as Color,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${option['label']} ${option['description']}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2D2B55),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (int? newValue) {
+            if (newValue != null) {
+              _updateGridSize(newValue);
+            }
+          },
         ),
       ),
     );
@@ -850,8 +853,8 @@ class _DiyPageState extends State<DiyPage> {
           backgroundColor: Colors.transparent,
           side: BorderSide.none,
           padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 32 : 40,
-            vertical: isSmallScreen ? 32 : 24,
+            horizontal: isSmallScreen ? 24 : 30,
+            vertical: isSmallScreen ? 18 : 20,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -909,8 +912,8 @@ class _DiyPageState extends State<DiyPage> {
               canSave || isSaved ? Colors.white : Colors.grey.shade600,
           shadowColor: Colors.transparent,
           padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 32 : 40,
-            vertical: isSmallScreen ? 32 : 24,
+            horizontal: isSmallScreen ? 16 : 24,
+            vertical: isSmallScreen ? 10 : 16,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
