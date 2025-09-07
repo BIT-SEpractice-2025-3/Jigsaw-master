@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'game_select.dart';
-import 'ranking_new.dart';
-import 'setting.dart';
+import 'ranking.dart'; // 使用ranking_new.dart
 import 'diy.dart';
 import 'login_page.dart';
-import 'auth_debug_page.dart';
-import 'settings_page.dart';
-import 'score_test_page.dart';
-import '../services/auth_service_simple.dart';
+import 'setting.dart';
+import '../services/auth_service.dart'; // 使用auth_service_simple.dart
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -147,10 +144,10 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 16),
                     _buildMenuButton(
                       context: context,
-                      icon: Icons.settings_rounded,
+                      icon: Icons.settings,
                       title: '设置',
-                      subtitle: '调整游戏偏好设置',
-                      color: const Color(0xFF4CAF50),
+                      subtitle: '设置游戏应用',
+                      color: Colors.grey,
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -158,31 +155,6 @@ class _HomePageState extends State<HomePage> {
                               builder: (context) => const SettingsPage()),
                         );
                       },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 测试按钮（开发模式）
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ScoreTestPage()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple.shade600,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bug_report),
-                          SizedBox(width: 8),
-                          Text('分数测试', style: TextStyle(fontSize: 16)),
-                        ],
-                      ),
                     ),
                   ],
                 ),

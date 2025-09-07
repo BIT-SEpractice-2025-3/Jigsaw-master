@@ -117,7 +117,7 @@ class GameSelectionPage extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (context) => const PuzzleMasterPage(
                             imageSource: 'assets/images/default_puzzle.jpg',
-                            difficulty: 1,
+                            difficulty: 4,
                           ),
                         ),
                       );

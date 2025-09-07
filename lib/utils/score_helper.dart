@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service_simple.dart';
+import '../services/auth_service.dart';
 
 // 游戏结束后的分数提交工具类
 class ScoreSubmissionHelper {
@@ -203,6 +203,9 @@ class ScoreSubmissionHelper {
         break;
       case 'hard':
         baseScore = 20000;
+        break;
+      case 'master':
+        baseScore = 40000;
         break;
     }
 

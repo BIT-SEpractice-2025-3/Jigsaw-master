@@ -724,7 +724,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       case 3:
         return '困难 (5×5)';
       default:
-        return '简单 (3×3)';
+        return '大师模式';
     }
   }
 }

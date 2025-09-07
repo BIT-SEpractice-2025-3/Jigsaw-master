@@ -14,5 +14,21 @@
     "time": 11,
     "difficulty": "easy",
     "created_at": "2025-09-08T06:58:21.040599"
+  },
+  {
+    "user_id": 2,
+    "username": "123",
+    "score": 7620,
+    "time": 74,
+    "difficulty": "easy",
+    "created_at": "2025-09-08T07:19:21.601193"
+  },
+  {
+    "user_id": 2,
+    "username": "123",
+    "score": 7849,
+    "time": 50,
+    "difficulty": "master",
+    "created_at": "2025-09-08T07:21:24.548446"
   }
 ]
