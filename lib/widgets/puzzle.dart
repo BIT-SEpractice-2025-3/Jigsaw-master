@@ -9,6 +9,7 @@ import '../models/puzzle_piece.dart';
 import 'home.dart';
 import '../services/puzzle_generate_service.dart';
 import '../services/puzzle_game_service.dart';
+import '../utils/score_helper.dart';
 
 // 修改自定义画笔类，解决发光提示位置问题
 class PuzzlePieceHighlightPainter extends CustomPainter {
@@ -95,6 +96,11 @@ class _PuzzlePageState extends State<PuzzlePage> {
   bool _shouldHighlightTarget = false;
   Offset _lastDragPosition = Offset.zero;
 
+  // 新增：计时和分数状态
+  int _currentScore = 0;
+  int _currentTime = 0;
+  bool _isGameRunning = false;
+
   @override
   void initState() {
     super.initState();
@@ -108,7 +114,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
         _showCompletionDialog();
       }
       if (mounted) {
-        setState(() {}); // 刷新UI以反映状态变化
+        setState(() {
+          _isGameRunning = status == GameStatus.inProgress;
+        }); // 刷新UI以反映状态变化
       }
     });
 
@@ -116,6 +124,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
     _gameService.timerStream.listen((seconds) {
       if (mounted) {
         setState(() {
+          _currentTime = seconds;
           // 只需要调用setState来触发UI刷新,
           // build方法会自动获取最新的elapsedSeconds
         });
@@ -152,14 +161,45 @@ class _PuzzlePageState extends State<PuzzlePage> {
         final time = _formatTime(_gameService.elapsedSeconds);
 
         return AlertDialog(
-          title: const Text('恭喜！'),
+          title: Row(
+            children: [
+              Icon(Icons.celebration, color: Colors.amber, size: 28),
+              SizedBox(width: 8),
+              Text('恭喜完成！'),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('你已完成拼图！'),
-              const SizedBox(height: 10),
-              Text('用时: $time'),
-              Text('得分: $score'),
+              Text('🎉 你已成功完成拼图！'),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('⏱️ 用时:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        Text(time, style: TextStyle(fontFamily: 'monospace')),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('⭐ 得分:', style: TextStyle(fontWeight: FontWeight.w500)),
+                        Text(score.toString(), style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade700)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           actions: [
@@ -181,6 +221,18 @@ class _PuzzlePageState extends State<PuzzlePage> {
               },
               child: const Text('返回主页'),
             ),
+            // 新增：提交分数按钮
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _submitScore(score, _gameService.elapsedSeconds, widget.difficulty);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('提交分数'),
+            ),
           ],
         );
       },
@@ -197,6 +249,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
     _gameService.resetGame();
     setState(() {
       _initFuture = _initializeGame();
+      _currentScore = 0;
+      _currentTime = 0;
+      _isGameRunning = false;
     });
   }
 
@@ -214,14 +269,43 @@ class _PuzzlePageState extends State<PuzzlePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("拼图游戏"),
+        backgroundColor: Colors.deepPurple.shade50,
+        elevation: 0,
         actions: [
-          // 计时器显示
+          // 新增：计时器显示（与puzzle_master相同风格）
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Center(
-              child: Text(
-                _formatTime(_gameService.elapsedSeconds),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _isGameRunning ? Colors.green.shade100 : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _isGameRunning ? Colors.green : Colors.grey,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _isGameRunning ? Icons.timer : Icons.timer_off,
+                      size: 16,
+                      color: _isGameRunning ? Colors.green.shade700 : Colors.grey.shade600,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      _formatTime(_currentTime),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        color: _isGameRunning ? Colors.green.shade700 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -240,6 +324,106 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
           return Column(
             children: [
+              // 新增：游戏信息栏（与puzzle_master相同风格）
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.shade50,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // 预览图
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300, width: 2),
+                      ),
+                      child: _targetImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: RawImage(
+                                image: _targetImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Center(child: CircularProgressIndicator()),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // 游戏信息
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '经典拼图',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple.shade700,
+                            ),
+                          ),
+                          Text(
+                            _getDifficultyText(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 分数显示
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.amber.shade100,
+                            Colors.orange.shade100,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade300, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.star,
+                            color: Colors.amber.shade700,
+                            size: 20,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            _gameService.calculateScore().toString(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // 上方拼图区域
               Container(
                 height: size.height * 0.6,
@@ -249,9 +433,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
                   children: [
                     // 状态栏显示
                     _buildStatusBar(),
-
-                    // 目标图像预览
-                    _buildTargetImagePreview(),
 
                     // 拼图放置区
                     Expanded(child: Container(
@@ -289,6 +470,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
       ),
     );
   }
+
   // 游戏状态栏
   Widget _buildStatusBar() {
     return Padding(
@@ -343,7 +525,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
     );
   }
 
-  // 难度文本
+  // 新增：获取难度文本
   String _getDifficultyText() {
     switch (widget.difficulty) {
       case 1: return '简单 (3×3)';
@@ -351,27 +533,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
       case 3: return '困难 (5×5)';
       default: return '简单 (3×3)';
     }
-  }
-
-  // 目标图像预览
-  Widget _buildTargetImagePreview() {
-    return Container(
-      width: 100,
-      height: 100,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: _targetImage != null
-          ? Center(
-        child: RawImage(
-          image: _targetImage,
-          fit: BoxFit.cover,
-        ),
-      )
-          : const Center(child: CircularProgressIndicator()),
-    );
   }
 
   // 拼图放置区
@@ -727,5 +888,30 @@ class _PuzzlePageState extends State<PuzzlePage> {
         ],
       ),
     );
+  }
+
+  // 新增：提交分数到服务器
+  Future<void> _submitScore(int score, int timeInSeconds, int difficulty) async {
+    try {
+      await ScoreSubmissionHelper.submitGameScore(
+        context: context,
+        score: score,
+        timeInSeconds: timeInSeconds,
+        difficulty: _getDifficultyString(difficulty),
+      );
+    } catch (e) {
+      // 错误已经在ScoreSubmissionHelper中处理，这里不需要额外处理
+      print('分数提交失败: $e');
+    }
+  }
+
+  // 新增：将难度数字转换为字符串
+  String _getDifficultyString(int difficulty) {
+    switch (difficulty) {
+      case 1: return 'easy';
+      case 2: return 'medium';
+      case 3: return 'hard';
+      default: return 'easy';
+    }
   }
 }

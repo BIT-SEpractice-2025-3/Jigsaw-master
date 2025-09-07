@@ -1,17 +1,44 @@
-// 主页
-// ->难度选择
-// ->排行榜
-// ->设置
-// ->自定义
-
-import 'package:flutter/material.dart';  // 导入Flutter的材料设计库
+import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'game_select.dart';
-import 'ranking.dart';
+import 'ranking_new.dart';
 import 'setting.dart';
 import 'diy.dart';
+import 'login_page.dart';
+import 'auth_debug_page.dart';
+import 'settings_page.dart';
+import 'score_test_page.dart';
+import '../services/auth_service_simple.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthData();
+  }
+
+  Future<void> _loadAuthData() async {
+    await _authService.loadAuthData();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // 刷新用户状态
+  Future<void> _refreshAuthState() async {
+    await _authService.loadAuthData();
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +55,10 @@ class HomePage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // 新增：用户状态栏
+                _buildUserStatusBar(),
+                const SizedBox(height: 20),
+
                 // 应用标题和图标
                 const Column(
                   children: [
@@ -78,7 +109,8 @@ class HomePage extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const GameSelectionPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const GameSelectionPage()),
                         );
                       },
                     ),
@@ -92,7 +124,8 @@ class HomePage extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const RankingPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const RankingPage()),
                         );
                       },
                     ),
@@ -106,7 +139,8 @@ class HomePage extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const DiyPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const DiyPage()),
                         );
                       },
                     ),
@@ -120,9 +154,35 @@ class HomePage extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const SettingPage()),
+                          MaterialPageRoute(
+                              builder: (context) => const SettingsPage()),
                         );
                       },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 测试按钮（开发模式）
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ScoreTestPage()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bug_report),
+                          SizedBox(width: 8),
+                          Text('分数测试', style: TextStyle(fontSize: 16)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -153,6 +213,108 @@ class HomePage extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // 新增：用户状态栏
+  Widget _buildUserStatusBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF6A5ACD).withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6A5ACD).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _authService.isLoggedIn ? Icons.person : Icons.person_outline,
+              color: const Color(0xFF6A5ACD),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _authService.isLoggedIn
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '欢迎回来！',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      Text(
+                        _authService.currentUser?['username'] ?? '用户',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2D2B55),
+                        ),
+                      ),
+                    ],
+                  )
+                : const Text(
+                    '未登录 - 点击登录获得更好体验',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF2D2B55),
+                    ),
+                  ),
+          ),
+          if (_authService.isLoggedIn)
+            TextButton(
+              onPressed: () async {
+                await _authService.logout();
+                _refreshAuthState();
+              },
+              child: const Text(
+                '退出',
+                style: TextStyle(
+                  color: Color(0xFF6A5ACD),
+                  fontSize: 12,
+                ),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                ).then((_) {
+                  // 登录后刷新状态
+                  _refreshAuthState();
+                });
+              },
+              child: const Text(
+                '登录',
+                style: TextStyle(
+                  color: Color(0xFF6A5ACD),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -334,7 +496,8 @@ class HomePage extends StatelessWidget {
               size: 16,
             ),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
       ),
     );
@@ -371,38 +534,32 @@ class _PuzzlePiecePainter extends CustomPainter {
     switch (side) {
       case 0: // 上
         path.moveTo(center.dx - tabWidth, center.dy - radius);
-        path.quadraticBezierTo(
-            center.dx, center.dy - radius - tabWidth,
-            center.dx + tabWidth, center.dy - radius
-        );
+        path.quadraticBezierTo(center.dx, center.dy - radius - tabWidth,
+            center.dx + tabWidth, center.dy - radius);
         break;
       case 1: // 右
         path.moveTo(center.dx + radius, center.dy - tabWidth);
-        path.quadraticBezierTo(
-            center.dx + radius + tabWidth, center.dy,
-            center.dx + radius, center.dy + tabWidth
-        );
+        path.quadraticBezierTo(center.dx + radius + tabWidth, center.dy,
+            center.dx + radius, center.dy + tabWidth);
         break;
       case 2: // 下
         path.moveTo(center.dx + tabWidth, center.dy + radius);
-        path.quadraticBezierTo(
-            center.dx, center.dy + radius + tabWidth,
-            center.dx - tabWidth, center.dy + radius
-        );
+        path.quadraticBezierTo(center.dx, center.dy + radius + tabWidth,
+            center.dx - tabWidth, center.dy + radius);
         break;
       case 3: // 左
         path.moveTo(center.dx - radius, center.dy + tabWidth);
-        path.quadraticBezierTo(
-            center.dx - radius - tabWidth, center.dy,
-            center.dx - radius, center.dy - tabWidth
-        );
+        path.quadraticBezierTo(center.dx - radius - tabWidth, center.dy,
+            center.dx - radius, center.dy - tabWidth);
         break;
     }
 
-    canvas.drawPath(path, Paint()
-      ..color = Colors.white.withOpacity(0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.white.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0);
   }
 
   @override

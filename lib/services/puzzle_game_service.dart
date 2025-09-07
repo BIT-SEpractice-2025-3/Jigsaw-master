@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 import '/models/puzzle_piece.dart';
+
 // 游戏状态枚举
 enum GameStatus {
   notStarted,  // 未开始
@@ -81,10 +82,23 @@ class PuzzleGameService {
   final _snapController = StreamController<SnapTarget?>.broadcast();
   Stream<SnapTarget?> get snapStream => _snapController.stream;
 
+  // 新增：Master模式专用的分数系统
+  int _masterScore = 0;
+  int get masterScore => _masterScore;
+
+  // 新增：Master模式分数变化流
+  final _masterScoreController = StreamController<int>.broadcast();
+  Stream<int> get masterScoreStream => _masterScoreController.stream;
+
   // 初始化大师模式游戏
   void initMasterGame(List<PuzzlePiece> pieces, ui.Size boardSize) {
     final random = Random();
     masterPieces.clear();
+    _masterScore = 0; // 重置分数
+    _elapsedSeconds = 0; // 重置计时
+    _masterScoreController.add(_masterScore);
+    _timerController.add(_elapsedSeconds);
+
     for (int i = 0; i < pieces.length; i++) {
       final piece = pieces[i];
       masterPieces.add(MasterPieceState(
@@ -102,8 +116,11 @@ class PuzzleGameService {
         group: i,
       ));
     }
-    // 通知UI更新
-    _statusController.add(GameStatus.inProgress);
+
+    // 启动计时器
+    _status = GameStatus.inProgress;
+    _statusController.add(_status);
+    _startTimer();
   }
 
   // 更新大师模式中拼图块的变换
@@ -203,11 +220,37 @@ class PuzzleGameService {
       }
     }
 
-    // 4. 清理并检查游戏是否完成
+    // 4. 新增：计算并添加分数奖励
+    _addSnapScore();
+
+    // 5. 清理并检查游戏是否完成
     snapTarget = null;
     _snapController.add(null);
     print("吸附成功");
     _checkMasterGameCompletion();
+  }
+
+  // 新增：计算吸附得分
+  void _addSnapScore() {
+    // 基础吸附分数
+    const baseSnapScore = 100;
+
+    // 时间奖励：早期吸附获得更多分数
+    final timeBonus = max(0, 300 - _elapsedSeconds);
+
+    // 总分数
+    final totalScore = baseSnapScore + timeBonus;
+
+    _masterScore += totalScore;
+    _masterScoreController.add(_masterScore);
+
+    print("吸附得分: $totalScore (基础: $baseSnapScore, 时间奖励: $timeBonus)");
+  }
+
+  // 新增：扣除操作分数（可选，用于错误操作惩罚）
+  void deductScore(int points) {
+    _masterScore = max(0, _masterScore - points);
+    _masterScoreController.add(_masterScore);
   }
 
   // 获取边缘中心点在世界坐标系中的位置
@@ -266,12 +309,48 @@ class PuzzleGameService {
     if (allInOneGroup) {
       // 还需要检查最终形成的图形是否在拼图区域内并填满
       // 这是一个复杂的几何问题，暂时简化为成组就算完成
+
+      // 新增：完成游戏时的分数奖励
+      _addCompletionBonus();
+
       _status = GameStatus.completed;
       _statusController.add(_status);
       _stopTimer();
     }
   }
 
+  // 新增：完成游戏的分数奖励
+  void _addCompletionBonus() {
+    // 完成奖励基础分数
+    const baseCompletionScore = 1000;
+
+    // 时间奖励：根据完成时间给予奖励
+    final timeBonus = max(0, (1800 - _elapsedSeconds) * 2); // 30分钟内完成有时间奖励
+
+    // 效率奖励：根据吸附次数给予奖励
+    final efficiency = masterPieces.length - 1; // 理论最少吸附次数
+    final efficiencyBonus = efficiency * 50;
+
+    final totalBonus = baseCompletionScore + timeBonus + efficiencyBonus;
+    _masterScore += totalBonus;
+    _masterScoreController.add(_masterScore);
+
+    print("完成奖励: $totalBonus (基础: $baseCompletionScore, 时间: $timeBonus, 效率: $efficiencyBonus)");
+  }
+
+  // 新增：重置Master模式
+  void resetMasterGame() {
+    _stopTimer();
+    _masterScore = 0;
+    _elapsedSeconds = 0;
+    _masterScoreController.add(_masterScore);
+    _timerController.add(_elapsedSeconds);
+    masterPieces.clear();
+    _status = GameStatus.notStarted;
+    _statusController.add(_status);
+    snapTarget = null;
+    _snapController.add(null);
+  }
 
   // 初始化游戏
   Future<void> initGame(List<PuzzlePiece> pieces, int difficulty) async {
@@ -444,7 +523,8 @@ class PuzzleGameService {
   void dispose() {
     _stopTimer();
     _statusController.close();
-    _timerController.close(); // 关闭计时器流
-    _snapController.close(); // 关闭吸附事件流
+    _timerController.close();
+    _snapController.close();
+    _masterScoreController.close(); // 新增：关闭master分数流
   }
 }

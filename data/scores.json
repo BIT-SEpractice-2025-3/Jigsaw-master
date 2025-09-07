@@ -1,0 +1,18 @@
+[
+  {
+    "user_id": 2,
+    "username": "123",
+    "score": 1000,
+    "time": 120,
+    "difficulty": "medium",
+    "created_at": "2025-09-08T06:57:49.721688"
+  },
+  {
+    "user_id": 2,
+    "username": "123",
+    "score": 1090,
+    "time": 11,
+    "difficulty": "easy",
+    "created_at": "2025-09-08T06:58:21.040599"
+  }
+]
