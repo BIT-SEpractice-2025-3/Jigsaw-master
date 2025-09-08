@@ -5,12 +5,7 @@ import hashlib
 import datetime
 import os
 from functools import wraps
-
-try:
-    import jwt
-except ImportError:
-    print("警告: PyJWT未安装，请运行: pip install PyJWT")
-    jwt = None
+import jwt
 
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
@@ -422,7 +417,6 @@ if __name__ == '__main__':
     print("GET  /api/scores - 获取排行榜")
     print("POST /api/scores - 提交分数")
     print("GET  /api/user/profile - 获取用户资料")
-    print("GET  /api/health - 健康检查")
     print("\n服务器运行在: http://localhost:5000")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
