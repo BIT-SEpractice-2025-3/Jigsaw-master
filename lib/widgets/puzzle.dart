@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
-import 'dart:math' as Math;
 import '../models/puzzle_piece.dart';
 import 'home.dart';
 import '../services/puzzle_generate_service.dart';
@@ -94,7 +93,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
   final GlobalKey _puzzleAreaKey = GlobalKey();
 
   PuzzlePiece? _currentDraggingPiece;
-  int _currentDraggingIndex = -1;
   bool _shouldHighlightTarget = false;
   Offset _lastDragPosition = Offset.zero;
 
@@ -1003,7 +1001,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
                     // 重置拖动状态
                     setState(() {
                       _currentDraggingPiece = null;
-                      _currentDraggingIndex = -1;
                       _shouldHighlightTarget = false;
                     });
                     return;
@@ -1031,7 +1028,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
                   // 重置拖动状态
                   setState(() {
                     _currentDraggingPiece = null;
-                    _currentDraggingIndex = -1;
                     _shouldHighlightTarget = false;
                   });
                 },
@@ -1122,7 +1118,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
         // 记录当前拖动的拼图信息
         setState(() {
           _currentDraggingPiece = piece;
-          _currentDraggingIndex = index;
           _shouldHighlightTarget = false; // 拖动开始时不立即显示高亮
         });
       },
@@ -1142,29 +1137,57 @@ class _PuzzlePageState extends State<PuzzlePage> {
             return;
           }
 
-          final localPosition = puzzleAreaBox.globalToLocal(_lastDragPosition);
+          // 重新计算当前缩放比例以适应全屏等布局变化
+          final size = MediaQuery.of(context).size;
+          final double availableWidth = size.width - 32;
+          final double availableHeight = size.height * 0.4;
+          final double squareSize = availableWidth < availableHeight
+              ? availableWidth
+              : availableHeight;
+          final double currentScale =
+              squareSize / (_targetImage?.width.toDouble() ?? 300);
+
+          // 计算拼图区域的偏移（因为拼图区域是居中的）
+          final double offsetX = (puzzleAreaBox.size.width - squareSize) / 2;
+          final double offsetY = (puzzleAreaBox.size.height - squareSize) / 2;
+
+          // 减去偏移和边框宽度以获取相对于内容区域的局部位置
+          final localPosition = puzzleAreaBox.globalToLocal(_lastDragPosition) -
+              Offset(offsetX + 2, offsetY + 2);
 
           final targetCenter = Offset(
-              _currentDraggingPiece!.position.dx * _scale,
-              _currentDraggingPiece!.position.dy * _scale);
+              _currentDraggingPiece!.position.dx * currentScale,
+              _currentDraggingPiece!.position.dy * currentScale);
 
-          // 使用图片真实尺寸计算阈值，保持与渲染一致
-          final maxDimension = Math.max(
-              _currentDraggingPiece!.image.width.toDouble() * _scale,
-              _currentDraggingPiece!.image.height.toDouble() * _scale);
-          final highlightThreshold = maxDimension * 0.8;
+          // 根据拼图块和拼图区的位置判定，使用矩形重叠检测
+          final targetRect = Rect.fromCenter(
+            center: targetCenter,
+            width: _currentDraggingPiece!.image.width.toDouble() *
+                currentScale *
+                0.55,
+            height: _currentDraggingPiece!.image.height.toDouble() *
+                currentScale *
+                0.55,
+          );
 
-          final distance = (localPosition - targetCenter).distance;
+          final dragRect = Rect.fromCenter(
+            center: localPosition,
+            width: _currentDraggingPiece!.image.width.toDouble() *
+                currentScale *
+                0.55,
+            height: _currentDraggingPiece!.image.height.toDouble() *
+                currentScale *
+                0.55,
+          );
 
           setState(() {
-            _shouldHighlightTarget = distance <= highlightThreshold;
+            _shouldHighlightTarget = targetRect.overlaps(dragRect);
           });
         }
       },
       onDragEnd: (details) {
         // 拖动结束重置信息
         _currentDraggingPiece = null;
-        _currentDraggingIndex = -1;
         setState(() {
           _shouldHighlightTarget = false;
         });
