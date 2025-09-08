@@ -797,7 +797,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                     // 拼图放置区
                     Expanded(
                         child: Container(
-                      key: _puzzleAreaKey,
+                      // 将 GlobalKey 移到真正的拼图正方形容器（在 _buildPuzzlePlacementArea 内）
                       child: _buildPuzzlePlacementArea(),
                     )),
                   ],
@@ -984,6 +984,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
     return Center(
       child: Container(
+        key: _puzzleAreaKey,
         width: squareSize,
         height: squareSize,
         decoration: BoxDecoration(
@@ -1183,17 +1184,13 @@ class _PuzzlePageState extends State<PuzzlePage> {
         if (_currentDraggingPiece != null) {
           _lastDragPosition = details.globalPosition;
 
-          // 尝试获取拼图放置区域的RenderBox
+          // 使用拼图正方形区域的 RenderBox，将全局坐标转换为局部坐标
           final RenderBox? puzzleAreaBox =
               _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
-
           if (puzzleAreaBox == null) {
-            setState(() {
-              _shouldHighlightTarget = false;
-            });
+            setState(() => _shouldHighlightTarget = false);
             return;
           }
-
           // 重新计算当前缩放比例以适应全屏等布局变化
           final size = MediaQuery.of(context).size;
           final double availableWidth = size.width - 32;
