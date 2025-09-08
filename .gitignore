@@ -52,3 +52,6 @@ app.*.map.json
 *.lock
 .metadata
 *.yaml
+
+.venv/
+.idea/
