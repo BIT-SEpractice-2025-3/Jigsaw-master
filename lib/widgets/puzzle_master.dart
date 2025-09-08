@@ -5,6 +5,8 @@ import '/models/puzzle_piece.dart';
 import '/services/puzzle_game_service.dart';
 import '/services/puzzle_generate_service.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
+import '../services/game_save_service.dart';
+import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
 
 class PuzzleMasterPage extends StatefulWidget {
@@ -35,9 +37,19 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   int _currentTime = 0;
   bool _isGameRunning = false;
 
+  // 新增：实时存档相关
+  DateTime _lastSaveTime = DateTime.now();
+  static const Duration _autoSaveInterval = Duration(seconds: 30); // 每30秒自动保存
+
+  // 新增：待初始化的拼图块
+  List<PuzzlePiece>? _pendingPieces;
+
   @override
   void initState() {
     super.initState();
+    // 检查存档并初始化游戏
+    _checkForSaveAndInitialize();
+
     // 监听吸附事件以更新UI
     _gameService.snapStream.listen((snapTarget) {
       if (mounted && _snapTarget != snapTarget) {
@@ -62,6 +74,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         setState(() {
           _currentTime = seconds;
         });
+
+        // 检查是否需要自动保存
+        _checkAutoSave();
       }
     });
 
@@ -269,9 +284,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                 final boardSize =
                     ui.Size(constraints.maxWidth, constraints.maxHeight);
 
-                if (!_gameInitialized) {
+                if (!_gameInitialized && _pendingPieces != null) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _initializeGame(boardSize);
+                    _initializeGame(boardSize, _pendingPieces);
+                    _pendingPieces = null;
                   });
                 }
 
@@ -355,6 +371,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：显示游戏完成对话框
   void _showCompletionDialog() {
+    // 游戏完成，删除存档
+    GameSaveService.deleteSave('master', widget.difficulty);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -491,11 +510,13 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     }
   }
 
-  Future<void> _initializeGame(ui.Size boardSize) async {
+  Future<void> _initializeGame(ui.Size boardSize,
+      [List<PuzzlePiece>? pieces]) async {
     if (_gameInitialized) return;
-    final pieces = await _generateService.generatePuzzle(
-        widget.imageSource, widget.difficulty);
-    _gameService.initMasterGame(pieces, boardSize);
+    final puzzlePieces = pieces ??
+        await _generateService.generatePuzzle(
+            widget.imageSource, widget.difficulty);
+    _gameService.initMasterGame(puzzlePieces, boardSize);
     if (mounted) {
       setState(() {
         _gameInitialized = true;
@@ -726,6 +747,169 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       default:
         return '大师模式';
     }
+  }
+
+  // 新增：检查存档并初始化游戏
+  Future<void> _checkForSaveAndInitialize() async {
+    // 使用存档检测对话框
+    final shouldLoadSave = await SaveDetectionDialog.showSaveDialog(
+      context: context,
+      gameMode: 'master',
+      difficulty: widget.difficulty,
+    );
+
+    if (shouldLoadSave == true) {
+      await _loadGameFromSave();
+      return;
+    } else if (shouldLoadSave == false) {
+      // 删除旧存档，开始新游戏
+      await GameSaveService.deleteSave('master', widget.difficulty);
+    }
+
+    // 开始新游戏
+    _initializeNewGame();
+  }
+
+  // 新增：从存档恢复游戏
+  Future<void> _resumeFromSave(GameSave savedGame) async {
+    // 先生成拼图块
+    final pieces = await _generateService.generatePuzzle(
+        savedGame.imageSource, widget.difficulty);
+
+    // 从存档恢复大师模式拼图块
+    final masterPieces = savedGame.masterPieces?.map((data) {
+          final piece = pieces.firstWhere((p) => p.nodeId == data.nodeId);
+          return MasterPieceState(
+            piece: piece,
+            position: Offset(data.positionX, data.positionY),
+            scale: data.scale,
+            rotation: data.rotation,
+            group: data.group,
+          );
+        }).toList() ??
+        [];
+
+    _gameService.masterPieces = masterPieces;
+    setState(() {
+      _gameInitialized = true;
+      _isGameRunning = true;
+      _currentScore = savedGame.currentScore;
+      _currentTime = savedGame.elapsedSeconds;
+    });
+    _gameService.setElapsedTime(savedGame.elapsedSeconds);
+    _gameService.startGame();
+  }
+
+  // 新增：初始化新游戏
+  void _initializeNewGame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final pieces = await _generateService.generatePuzzle(
+          widget.imageSource, widget.difficulty);
+      setState(() {
+        _pendingPieces = pieces;
+      });
+    });
+  }
+
+  // 新增：检查自动保存
+  void _checkAutoSave() {
+    final now = DateTime.now();
+    if (now.difference(_lastSaveTime) >= _autoSaveInterval) {
+      // 超过自动保存时间间隔，执行自动保存
+      _lastSaveTime = now;
+      _saveGame().catchError((e) => print('Auto save failed: $e'));
+    }
+  }
+
+  // 新增：保存游戏
+  Future<void> _saveGame() async {
+    final currentPieces = _gameService.masterPieces
+        .map((pieceState) => MasterPieceData(
+              nodeId: pieceState.piece.nodeId,
+              positionX: pieceState.position.dx,
+              positionY: pieceState.position.dy,
+              scale: pieceState.scale,
+              rotation: pieceState.rotation,
+              group: pieceState.group,
+            ))
+        .toList();
+
+    await GameSaveService.saveGame(
+      gameMode: 'master',
+      difficulty: widget.difficulty,
+      elapsedSeconds: _currentTime,
+      currentScore: _currentScore,
+      imageSource: widget.imageSource,
+      placedPieces: [], // 空列表
+      availablePieces: [], // 空列表
+      masterData: {'pieces': currentPieces.map((p) => p.toJson()).toList()},
+    );
+  }
+
+  // 新增：从存档加载游戏
+  Future<void> _loadGameFromSave() async {
+    try {
+      final gameSave =
+          await GameSaveService.loadGame('master', widget.difficulty);
+      if (gameSave == null) {
+        throw Exception('存档数据无效');
+      }
+
+      // 从存档恢复游戏
+      await _resumeFromSave(gameSave);
+
+      // 显示加载成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('游戏进度已恢复'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('加载存档详细错误: $e');
+      setState(() {
+        // 错误处理
+      });
+
+      // 加载失败时显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('加载存档失败，将开始新游戏'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // 删除损坏的存档并开始新游戏
+        await GameSaveService.deleteSave('master', widget.difficulty);
+        _initializeNewGame();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    // 在页面销毁时保存游戏进度
+    if (_gameService.status == GameStatus.inProgress) {
+      _saveGame().catchError((e) => print('Save on dispose failed: $e'));
+    }
+    super.dispose();
   }
 }
 
