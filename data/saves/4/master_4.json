@@ -1,0 +1,85 @@
+{
+  "gameMode": "master",
+  "difficulty": 4,
+  "elapsedSeconds": 381,
+  "currentScore": 0,
+  "imageSource": "assets/images/default_puzzle.jpg",
+  "placedPiecesIds": [],
+  "availablePiecesIds": [],
+  "masterPieces": [
+    {
+      "nodeId": 0,
+      "positionX": 1038.6880681970047,
+      "positionY": 670.4778343338921,
+      "scale": 0.5,
+      "rotation": 0.36883246899948136,
+      "group": 0
+    },
+    {
+      "nodeId": 1,
+      "positionX": 346.4899827079182,
+      "positionY": 494.47525113456805,
+      "scale": 0.5,
+      "rotation": 5.260878828340387,
+      "group": 1
+    },
+    {
+      "nodeId": 2,
+      "positionX": 661.6755599287595,
+      "positionY": 482.5263135209005,
+      "scale": 0.5,
+      "rotation": 5.2553388306557025,
+      "group": 2
+    },
+    {
+      "nodeId": 3,
+      "positionX": 779.9829839569136,
+      "positionY": 323.45854072018085,
+      "scale": 0.5,
+      "rotation": 5.096174877041963,
+      "group": 3
+    },
+    {
+      "nodeId": 4,
+      "positionX": 179.81135554235323,
+      "positionY": 840.680859231746,
+      "scale": 0.5,
+      "rotation": 4.930217126789135,
+      "group": 4
+    },
+    {
+      "nodeId": 5,
+      "positionX": 1317.0348925343683,
+      "positionY": 306.79137609738945,
+      "scale": 0.5,
+      "rotation": 2.658219412921974,
+      "group": 5
+    },
+    {
+      "nodeId": 6,
+      "positionX": 1095.4823909808456,
+      "positionY": 457.16171021317984,
+      "scale": 0.5,
+      "rotation": 2.9980463597808855,
+      "group": 6
+    },
+    {
+      "nodeId": 7,
+      "positionX": 128.75756548918076,
+      "positionY": 37.865637409701336,
+      "scale": 0.5,
+      "rotation": 0.5520190098503565,
+      "group": 7
+    },
+    {
+      "nodeId": 8,
+      "positionX": 78.00517266816243,
+      "positionY": 483.1531014271788,
+      "scale": 0.5,
+      "rotation": 3.837011855382507,
+      "group": 8
+    }
+  ],
+  "user_id": 4,
+  "saved_at": "2025-09-08T13:39:00.024432"
+}
