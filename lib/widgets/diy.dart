@@ -33,21 +33,21 @@ class _DiyPageState extends State<DiyPage> {
       'label': '简单',
       'description': '3x3 (9块)',
       'icon': Icons.sentiment_satisfied,
-      'color': const Color(0xFF4CAF50),
+      'color': const Color(0xFF6A5ACD), // 蓝紫
     },
     {
       'value': 4,
       'label': '中等',
       'description': '4x4 (16块)',
       'icon': Icons.sentiment_neutral,
-      'color': const Color(0xFFFF9800),
+      'color': const Color(0xFFFF9800), // 黄
     },
     {
       'value': 5,
       'label': '困难',
       'description': '5x5 (25块)',
       'icon': Icons.sentiment_dissatisfied,
-      'color': const Color(0xFFE91E63),
+      'color': const Color(0xFFE91E63), // 红
     },
   ];
 
@@ -149,7 +149,7 @@ class _DiyPageState extends State<DiyPage> {
           top: 50,
           right: -40,
           child: _buildPuzzleDecoration(
-            color: const Color(0x30FF9800),
+            color: const Color(0x206A5ACD),
             size: 100,
             rotation: -0.3,
           ),
@@ -160,7 +160,7 @@ class _DiyPageState extends State<DiyPage> {
           bottom: 80,
           left: -50,
           child: _buildPuzzleDecoration(
-            color: const Color(0x30E91E63),
+            color: const Color(0x206A5ACD),
             size: 110,
             rotation: 0.7,
           ),
@@ -171,7 +171,7 @@ class _DiyPageState extends State<DiyPage> {
           bottom: -40,
           right: -30,
           child: _buildPuzzleDecoration(
-            color: const Color(0x304CAF50),
+            color: const Color(0x146A5ACD),
             size: 130,
             rotation: -0.5,
           ),
@@ -324,15 +324,15 @@ class _DiyPageState extends State<DiyPage> {
             _buildDifficultySelector(),
             SizedBox(height: isSmallScreen ? 20 : 24),
 
-            // 预览切换按钮
-            _buildPreviewToggleButton(),
+            // 预览切换按钮和保存按钮
+            Row(
+              children: [
+                Expanded(child: _buildPreviewToggleButton()),
+                SizedBox(width: isSmallScreen ? 16 : 24),
+                Expanded(child: _buildSaveButton()),
+              ],
+            ),
             SizedBox(height: isSmallScreen ? 20 : 24),
-
-            // 保存按钮
-            _buildSaveButton(),
-
-            // 底部空白间距
-            SizedBox(height: isSmallScreen ? 40 : 60),
           ],
         ),
       ),
@@ -377,28 +377,26 @@ class _DiyPageState extends State<DiyPage> {
 
     return Container(
       width: isSmallScreen ? double.infinity : null,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: _selectedImage != null
-            ? LinearGradient(
+      decoration: _selectedImage != null
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFFFF9800),
-                  const Color(0xFFFF9800).withOpacity(0.8),
+                  Color.fromARGB(255, 255, 139, 31),
+                  Color.fromARGB(255, 255, 139, 31)
                 ],
-              )
-            : null,
-        boxShadow: _selectedImage != null
-            ? [
+              ),
+              boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFF9800).withOpacity(0.4),
+                  color: const Color(0xFF6A5ACD).withOpacity(0.18),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
-              ]
-            : null,
-      ),
+              ],
+            )
+          : null,
       child: ElevatedButton.icon(
         onPressed: _selectedImage != null
             ? () async {
@@ -435,8 +433,8 @@ class _DiyPageState extends State<DiyPage> {
               _selectedImage != null ? Colors.white : Colors.grey.shade600,
           shadowColor: Colors.transparent,
           padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 24 : 30,
-            vertical: isSmallScreen ? 18 : 15,
+            horizontal: isSmallScreen ? 24 : 40,
+            vertical: isSmallScreen ? 21 : 24,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -455,13 +453,14 @@ class _DiyPageState extends State<DiyPage> {
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: isSmallScreen ? double.infinity : 650,
+          maxHeight: double.infinity,
         ),
         child: Material(
           borderRadius: BorderRadius.circular(28),
           elevation: 8,
           shadowColor: const Color(0xFF6A5ACD).withOpacity(0.15),
           child: Container(
-            padding: EdgeInsets.all(isSmallScreen ? 28 : 32),
+            padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(28),
@@ -487,7 +486,7 @@ class _DiyPageState extends State<DiyPage> {
                       _buildActionButton(
                         icon: Icons.photo_library_rounded,
                         label: '从相册选择',
-                        color: const Color(0xFF6A5ACD),
+                        color: const Color.fromARGB(255, 248, 213, 77),
                         onPressed: _pickImage,
                         isFullWidth: true,
                       ),
@@ -495,7 +494,7 @@ class _DiyPageState extends State<DiyPage> {
                       _buildActionButton(
                         icon: Icons.download_rounded,
                         label: '导入配置',
-                        color: const Color(0xFF4CAF50),
+                        color: const Color.fromARGB(255, 157, 234, 24),
                         onPressed: _importConfig,
                         isFullWidth: true,
                       ),
@@ -509,7 +508,7 @@ class _DiyPageState extends State<DiyPage> {
                         child: _buildActionButton(
                           icon: Icons.photo_library_rounded,
                           label: '从相册选择',
-                          color: const Color(0xFF6A5ACD),
+                          color: const Color.fromARGB(255, 248, 213, 77),
                           onPressed: _pickImage,
                         ),
                       ),
@@ -518,7 +517,7 @@ class _DiyPageState extends State<DiyPage> {
                         child: _buildActionButton(
                           icon: Icons.download_rounded,
                           label: '导入配置',
-                          color: const Color(0xFF4CAF50),
+                          color: const Color.fromARGB(255, 157, 234, 24),
                           onPressed: _importConfig,
                         ),
                       ),
@@ -548,13 +547,13 @@ class _DiyPageState extends State<DiyPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color,
-            color.withOpacity(0.85),
+            const Color(0xFF6A5ACD),
+            const Color(0xFF6A5ACD),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.25),
+            color: const Color(0xFF6A5ACD).withOpacity(0.25),
             blurRadius: 15,
             offset: const Offset(0, 8),
             spreadRadius: 0,
@@ -829,29 +828,29 @@ class _DiyPageState extends State<DiyPage> {
       width: isSmallScreen ? double.infinity : null,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE91E63).withOpacity(0.3),
-          width: 4,
-        ),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            const Color(0xFFE91E63).withOpacity(0.05),
-          ],
+          colors: [Color(0xFFE91E63), Color(0xFFE91E63)],
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFE91E63).withOpacity(0.18),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: OutlinedButton.icon(
+      child: ElevatedButton.icon(
         onPressed: _togglePreview,
         icon: Icon(_showPreview
             ? Icons.visibility_off_rounded
             : Icons.visibility_rounded),
         label: Text(_showPreview ? '隐藏预览' : '显示预览'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFE91E63),
+        style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
-          side: BorderSide.none,
+          foregroundColor: Colors.white,
+          shadowColor: Colors.transparent,
           padding: EdgeInsets.symmetric(
             horizontal: isSmallScreen ? 24 : 30,
             vertical: isSmallScreen ? 18 : 20,
@@ -873,10 +872,10 @@ class _DiyPageState extends State<DiyPage> {
 
     return Container(
       width: isSmallScreen ? double.infinity : null,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: canSave || isSaved
-            ? LinearGradient(
+      decoration: canSave || isSaved
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isSaved
@@ -886,21 +885,19 @@ class _DiyPageState extends State<DiyPage> {
                       ]
                     : [
                         const Color(0xFFFF9800),
-                        const Color(0xFFFF9800).withOpacity(0.8),
+                        const Color(0xFFFF9800),
                       ],
-              )
-            : null,
-        boxShadow: canSave || isSaved
-            ? [
+              ),
+              boxShadow: [
                 BoxShadow(
                   color: (isSaved ? Colors.green : const Color(0xFFFF9800))
                       .withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
-              ]
-            : null,
-      ),
+              ],
+            )
+          : null,
       child: ElevatedButton.icon(
         onPressed: canSave ? _saveImageAndConfig : null,
         icon: Icon(isSaved ? Icons.check_circle_rounded : Icons.save_rounded),
@@ -912,8 +909,8 @@ class _DiyPageState extends State<DiyPage> {
               canSave || isSaved ? Colors.white : Colors.grey.shade600,
           shadowColor: Colors.transparent,
           padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 16 : 24,
-            vertical: isSmallScreen ? 10 : 16,
+            horizontal: isSmallScreen ? 24 : 30,
+            vertical: isSmallScreen ? 18 : 20,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
