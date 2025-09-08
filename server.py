@@ -25,37 +25,6 @@ def init_data_files():
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump([], f, ensure_ascii=False, indent=2)
-    
-    if not os.path.exists(SCORES_FILE):
-        # 创建一些示例分数数据
-        sample_scores = [
-            {
-                'user_id': 1,
-                'username': '示例玩家1',
-                'score': 9500,
-                'time': 180,
-                'difficulty': 'hard',
-                'created_at': datetime.datetime.now().isoformat()
-            },
-            {
-                'user_id': 2,
-                'username': '示例玩家2',
-                'score': 8200,
-                'time': 240,
-                'difficulty': 'medium',
-                'created_at': datetime.datetime.now().isoformat()
-            },
-            {
-                'user_id': 3,
-                'username': '示例玩家3',
-                'score': 7100,
-                'time': 160,
-                'difficulty': 'easy',
-                'created_at': datetime.datetime.now().isoformat()
-            }
-        ]
-        with open(SCORES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(sample_scores, f, ensure_ascii=False, indent=2)
 
 init_data_files()
 
@@ -389,6 +358,98 @@ def get_profile():
     except Exception as e:
         return jsonify({'error': f'获取用户资料失败: {str(e)}'}), 500
 
+@app.route('/api/save-game', methods=['POST'])
+@token_required
+def submit_save():
+    """提交游戏存档"""
+    try:
+        data = request.get_json()
+        
+        # 验证必要字段
+        required_fields = ['gameMode', 'difficulty', 'elapsedSeconds', 'currentScore', 'imageSource', 'placedPiecesIds', 'availablePiecesIds']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'缺少字段: {field}'}), 400
+        
+        # 创建用户存档目录
+        user_id = request.user['user_id']
+        user_save_dir = os.path.join(DATA_DIR, 'saves', str(user_id))
+        if not os.path.exists(user_save_dir):
+            os.makedirs(user_save_dir)
+        
+        # 构建存档文件名
+        game_mode = data['gameMode']
+        difficulty = data['difficulty']
+        filename = f"{game_mode}_{difficulty}.json"
+        filepath = os.path.join(user_save_dir, filename)
+        
+        # 添加用户ID和时间戳
+        save_data = data.copy()
+        save_data['user_id'] = user_id
+        save_data['saved_at'] = datetime.datetime.now().isoformat()
+        
+        # 保存到文件
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(save_data, f, ensure_ascii=False, indent=2)
+        print("成功")
+        return jsonify({'message': '存档保存成功'}), 201
+        
+    except Exception as e:
+        return jsonify({'error': f'提交存档失败: {str(e)}'}), 500
+
+@app.route('/api/load-save', methods=['GET'])
+@token_required
+def load_save():
+    """加载游戏存档"""
+    try:
+        game_mode = request.args.get('gameMode')
+        difficulty = request.args.get('difficulty')
+        
+        if not game_mode or not difficulty:
+            return jsonify({'error': '缺少参数 gameMode 或 difficulty'}), 400
+        
+        # 构建存档文件名
+        filename = f"{game_mode}_{difficulty}.json"
+        user_id = request.user['user_id']
+        filepath = os.path.join(DATA_DIR, 'saves', str(user_id), filename)
+        
+        if not os.path.exists(filepath):
+            return jsonify({'error': '存档不存在'}), 404
+        
+        # 读取存档文件
+        with open(filepath, 'r', encoding='utf-8') as f:
+            save_data = json.load(f)
+        
+        return jsonify(save_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'加载存档失败: {str(e)}'}), 500
+
+@app.route('/api/delete-save', methods=['DELETE'])
+@token_required
+def delete_save():
+    """删除游戏存档"""
+    try:
+        game_mode = request.args.get('gameMode')
+        difficulty = request.args.get('difficulty')
+        
+        if not game_mode or not difficulty:
+            return jsonify({'error': '缺少参数 gameMode 或 difficulty'}), 400
+        
+        # 构建存档文件名
+        filename = f"{game_mode}_{difficulty}.json"
+        user_id = request.user['user_id']
+        filepath = os.path.join(DATA_DIR, 'saves', str(user_id), filename)
+        
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return jsonify({'message': '存档删除成功'}), 200
+        else:
+            return jsonify({'message': '存档不存在'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'删除存档失败: {str(e)}'}), 500
+
 # 健康检查
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -409,6 +470,7 @@ def internal_error(error):
 
 if __name__ == '__main__':
     print("拼图游戏服务器启动中...")
+    print("服务器运行在: http://localhost:5000")
     print("API文档:")
     print("POST /api/auth/register - 用户注册")
     print("POST /api/auth/login - 用户登录")
@@ -417,6 +479,8 @@ if __name__ == '__main__':
     print("GET  /api/scores - 获取排行榜")
     print("POST /api/scores - 提交分数")
     print("GET  /api/user/profile - 获取用户资料")
-    print("\n服务器运行在: http://localhost:5000")
+    print("POST /api/save-game - 提交游戏存档")
+    print("GET  /api/load-save - 加载游戏存档")
+    print("DELETE /api/delete-save - 删除游戏存档")
     
     app.run(debug=True, host='0.0.0.0', port=5000)

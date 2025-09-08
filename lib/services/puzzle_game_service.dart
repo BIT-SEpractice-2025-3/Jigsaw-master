@@ -6,10 +6,10 @@ import '/models/puzzle_piece.dart';
 
 // 游戏状态枚举
 enum GameStatus {
-  notStarted,  // 未开始
-  inProgress,  // 进行中
-  paused,      // 暂停
-  completed    // 已完成
+  notStarted, // 未开始
+  inProgress, // 进行中
+  paused, // 暂停
+  completed // 已完成
 }
 
 // 新增：描述一个潜在的吸附目标
@@ -60,7 +60,7 @@ class PuzzleGameService {
 
   // 拼图碎片
   List<PuzzlePiece> _availablePieces = []; // 待放置的碎片
-  List<PuzzlePiece?> _placedPieces = [];   // 已放置的碎片
+  List<PuzzlePiece?> _placedPieces = []; // 已放置的碎片
 
   // 获取拼图碎片（只读）
   List<PuzzlePiece> get availablePieces => List.unmodifiable(_availablePieces);
@@ -124,7 +124,8 @@ class PuzzleGameService {
   }
 
   // 更新大师模式中拼图块的变换
-  void updateMasterPieceTransform(int pieceId, ui.Offset position, double scale, double rotation) {
+  void updateMasterPieceTransform(
+      int pieceId, ui.Offset position, double scale, double rotation) {
     final index = masterPieces.indexWhere((p) => p.piece.nodeId == pieceId);
     if (index != -1) {
       masterPieces[index].position = position;
@@ -135,7 +136,8 @@ class PuzzleGameService {
 
   // 检查是否有可吸附的拼图块
   void checkForSnapping(int draggedPieceId) {
-    final draggedState = masterPieces.firstWhere((p) => p.piece.nodeId == draggedPieceId);
+    final draggedState =
+        masterPieces.firstWhere((p) => p.piece.nodeId == draggedPieceId);
 
     for (var neighborEntry in draggedState.piece.neighbors.entries) {
       final side = neighborEntry.key;
@@ -143,7 +145,8 @@ class PuzzleGameService {
 
       if (neighborId == null) continue;
 
-      final neighborState = masterPieces.firstWhere((p) => p.piece.nodeId == neighborId);
+      final neighborState =
+          masterPieces.firstWhere((p) => p.piece.nodeId == neighborId);
 
       // 如果已经在同一组，则跳过
       if (draggedState.group == neighborState.group) continue;
@@ -155,17 +158,20 @@ class PuzzleGameService {
       if (myEdgeType == neighborEdgeType || myEdgeType == null) continue;
 
       // 2. 检查角度和大小
-      final angleDifference = (draggedState.rotation - neighborState.rotation).abs() % (2 * pi);
+      final angleDifference =
+          (draggedState.rotation - neighborState.rotation).abs() % (2 * pi);
       final scaleDifference = (draggedState.scale - neighborState.scale).abs();
 
       // 角度和大小必须非常接近 (角度差小于0.1弧度 ≈ 5.7度)
-      if ((angleDifference > 0.1 && (2 * pi - angleDifference) > 0.1) || scaleDifference > 0.1) {
+      if ((angleDifference > 0.1 && (2 * pi - angleDifference) > 0.1) ||
+          scaleDifference > 0.1) {
         continue;
       }
 
       // 3. 检查位置
       final myEdgeCenter = _getEdgeCenterInWorld(draggedState, side);
-      final neighborEdgeCenter = _getEdgeCenterInWorld(neighborState, neighborSide);
+      final neighborEdgeCenter =
+          _getEdgeCenterInWorld(neighborState, neighborSide);
       final distance = (myEdgeCenter - neighborEdgeCenter).distance;
 
       // 如果距离足够近 (阈值随缩放调整)
@@ -193,8 +199,10 @@ class PuzzleGameService {
   void snapPieces() {
     if (snapTarget == null) return;
 
-    final draggedState = masterPieces.firstWhere((p) => p.piece.nodeId == snapTarget!.draggedPieceId);
-    final targetState = masterPieces.firstWhere((p) => p.piece.nodeId == snapTarget!.targetPieceId);
+    final draggedState = masterPieces
+        .firstWhere((p) => p.piece.nodeId == snapTarget!.draggedPieceId);
+    final targetState = masterPieces
+        .firstWhere((p) => p.piece.nodeId == snapTarget!.targetPieceId);
 
     // 1. 统一组内所有块的旋转和缩放为目标块的值
     final draggedGroup = draggedState.group;
@@ -208,8 +216,10 @@ class PuzzleGameService {
     }
 
     // 2. 基于统一后的变换，精确计算对齐所需的位移
-    final myEdgeCenter = _getEdgeCenterInWorld(draggedState, snapTarget!.draggedPieceSide);
-    final neighborEdgeCenter = _getEdgeCenterInWorld(targetState, snapTarget!.targetPieceSide);
+    final myEdgeCenter =
+        _getEdgeCenterInWorld(draggedState, snapTarget!.draggedPieceSide);
+    final neighborEdgeCenter =
+        _getEdgeCenterInWorld(targetState, snapTarget!.targetPieceSide);
     final correctionVector = neighborEdgeCenter - myEdgeCenter;
 
     // 3. 移动整个被拖动的组，并将其合并到目标组
@@ -261,18 +271,29 @@ class PuzzleGameService {
     // 1. 获取边缘中心点相对于物理中心(pivot)的局部坐标
     ui.Offset localEdgeCenter;
     switch (side) {
-      case 'top': localEdgeCenter = ui.Offset(0, -halfSize); break;
-      case 'right': localEdgeCenter = ui.Offset(halfSize, 0); break;
-      case 'bottom': localEdgeCenter = ui.Offset(0, halfSize); break;
-      case 'left': localEdgeCenter = ui.Offset(-halfSize, 0); break;
-      default: localEdgeCenter = ui.Offset.zero;
+      case 'top':
+        localEdgeCenter = ui.Offset(0, -halfSize);
+        break;
+      case 'right':
+        localEdgeCenter = ui.Offset(halfSize, 0);
+        break;
+      case 'bottom':
+        localEdgeCenter = ui.Offset(0, halfSize);
+        break;
+      case 'left':
+        localEdgeCenter = ui.Offset(-halfSize, 0);
+        break;
+      default:
+        localEdgeCenter = ui.Offset.zero;
     }
 
     // 2. 应用旋转和缩放变换
     // 旋转
     final rotated = ui.Offset(
-      localEdgeCenter.dx * cos(state.rotation) - localEdgeCenter.dy * sin(state.rotation),
-      localEdgeCenter.dx * sin(state.rotation) + localEdgeCenter.dy * cos(state.rotation),
+      localEdgeCenter.dx * cos(state.rotation) -
+          localEdgeCenter.dy * sin(state.rotation),
+      localEdgeCenter.dx * sin(state.rotation) +
+          localEdgeCenter.dy * cos(state.rotation),
     );
     // 缩放
     final scaledAndRotated = rotated * state.scale;
@@ -284,11 +305,16 @@ class PuzzleGameService {
   // 获取相对的边
   String _getOppositeSide(String side) {
     switch (side) {
-      case 'top': return 'bottom';
-      case 'right': return 'left';
-      case 'bottom': return 'top';
-      case 'left': return 'right';
-      default: return '';
+      case 'top':
+        return 'bottom';
+      case 'right':
+        return 'left';
+      case 'bottom':
+        return 'top';
+      case 'left':
+        return 'right';
+      default:
+        return '';
     }
   }
 
@@ -335,7 +361,8 @@ class PuzzleGameService {
     _masterScore += totalBonus;
     _masterScoreController.add(_masterScore);
 
-    print("完成奖励: $totalBonus (基础: $baseCompletionScore, 时间: $timeBonus, 效率: $efficiencyBonus)");
+    print(
+        "完成奖励: $totalBonus (基础: $baseCompletionScore, 时间: $timeBonus, 效率: $efficiencyBonus)");
   }
 
   // 新增：重置Master模式
@@ -365,6 +392,80 @@ class PuzzleGameService {
     _statusController.add(_status);
   }
 
+  // 修复版本：初始化游戏，确保列表可修改
+  Future<void> initGameSafe(List<PuzzlePiece> pieces, int difficulty) async {
+    try {
+      _difficulty = difficulty;
+
+      // 确保创建可修改的列表，明确设置 growable: true
+      _placedPieces =
+          List<PuzzlePiece?>.filled(pieces.length, null, growable: true);
+      _availablePieces = <PuzzlePiece>[];
+      _availablePieces.addAll(pieces); // 使用 addAll 确保列表可修改
+
+      _status = GameStatus.notStarted;
+      _statusController.add(_status);
+
+      print(
+          '游戏安全初始化成功: ${pieces.length}个拼图块, 已放置列表长度: ${_placedPieces.length}, 可用列表长度: ${_availablePieces.length}');
+      print(
+          '列表可修改性测试: 已放置列表可修改=${_placedPieces.isNotEmpty || _placedPieces.isEmpty}, 可用列表可修改=${_availablePieces.isNotEmpty || _availablePieces.isEmpty}');
+    } catch (e) {
+      print('游戏安全初始化失败: $e');
+      throw Exception('游戏初始化失败: $e');
+    }
+  }
+
+  // 测试列表可修改性的方法
+  void testListModifiability() {
+    try {
+      print('=== 列表可修改性测试开始 ===');
+
+      // 测试已放置列表
+      final originalPlacedLength = _placedPieces.length;
+      print('已放置列表原始长度: $originalPlacedLength');
+
+      // 尝试修改已放置列表
+      try {
+        if (_placedPieces.isNotEmpty) {
+          final temp = _placedPieces[0];
+          _placedPieces[0] = temp; // 尝试赋值
+          print('✅ 已放置列表可以修改元素');
+        }
+      } catch (e) {
+        print('❌ 已放置列表不能修改元素: $e');
+      }
+
+      // 测试可用列表
+      final originalAvailableLength = _availablePieces.length;
+      print('可用列表原始长度: $originalAvailableLength');
+
+      // 尝试修改可用列表
+      try {
+        _availablePieces.add(_availablePieces.first); // 尝试添加
+        _availablePieces.removeLast(); // 尝试移除
+        print('✅ 可用列表可以添加和删除元素');
+      } catch (e) {
+        print('❌ 可用列表不能修改: $e');
+      }
+
+      // 尝试清空操作
+      try {
+        final tempList = <PuzzlePiece>[];
+        tempList.addAll(_availablePieces);
+        _availablePieces.clear();
+        _availablePieces.addAll(tempList);
+        print('✅ 可用列表可以清空和重新填充');
+      } catch (e) {
+        print('❌ 可用列表不能清空: $e');
+      }
+
+      print('=== 列表可修改性测试结束 ===');
+    } catch (e) {
+      print('列表可修改性测试出错: $e');
+    }
+  }
+
   // 开始游戏
   void startGame() {
     if (_status == GameStatus.notStarted || _status == GameStatus.paused) {
@@ -386,11 +487,12 @@ class PuzzleGameService {
   // 简化放置拼图的逻辑，不再需要位置参数
   bool placePiece(int pieceIndex, int targetPosition) {
     // 验证参数
-    if (_status != GameStatus.inProgress) return false;
-    if (targetPosition < 0 || targetPosition >= _placedPieces.length) return false;
+    if (_status != GameStatus.inProgress && _status != GameStatus.notStarted) return false;
+    if (targetPosition < 0 || targetPosition >= _placedPieces.length) {
+      return false;
+    }
     if (_placedPieces[targetPosition] != null) return false;
     if (pieceIndex < 0 || pieceIndex >= _availablePieces.length) return false;
-
     // 获取并移除待放置的拼图块（原始）
     final original = _availablePieces.removeAt(pieceIndex);
 
@@ -401,13 +503,14 @@ class PuzzleGameService {
 
     // 使用原始 piece 的 pieceSize（由 generate 提供）来计算格子大小与中心
     final double pieceSize = original.pieceSize;
-    final newCenter = ui.Offset(col * pieceSize + pieceSize / 2, row * pieceSize + pieceSize / 2);
+    final newCenter = ui.Offset(
+        col * pieceSize + pieceSize / 2, row * pieceSize + pieceSize / 2);
 
     // 由于 PuzzlePiece 的字段为 final，创建一个新的 PuzzlePiece 实例用于 placed 列表
     final placedPiece = PuzzlePiece(
       image: original.image,
       nodeId: original.nodeId,
-      position: newCenter,           // 对齐到目标格中心（原图坐标系）
+      position: newCenter, // 对齐到目标格中心（原图坐标系）
       shapePath: original.shapePath,
       bounds: original.bounds,
       pieceSize: original.pieceSize,
@@ -428,7 +531,9 @@ class PuzzleGameService {
   // 移除已放置的拼图碎片
   PuzzlePiece? removePiece(int position) {
     if (_status != GameStatus.inProgress) return null;
-    if (position < 0 || position >= _placedPieces.length || _placedPieces[position] == null) {
+    if (position < 0 ||
+        position >= _placedPieces.length ||
+        _placedPieces[position] == null) {
       return null;
     }
 
@@ -441,7 +546,10 @@ class PuzzleGameService {
   // 在拼图板上移动拼图块
   void movePieceOnBoard(int fromPosition, int toPosition) {
     if (_status != GameStatus.inProgress) return;
-    if (fromPosition < 0 || fromPosition >= _placedPieces.length || toPosition < 0 || toPosition >= _placedPieces.length) return;
+    if (fromPosition < 0 ||
+        fromPosition >= _placedPieces.length ||
+        toPosition < 0 ||
+        toPosition >= _placedPieces.length) return;
 
     final piece = _placedPieces[fromPosition];
     // 允许交换
@@ -526,5 +634,66 @@ class PuzzleGameService {
     _timerController.close();
     _snapController.close();
     _masterScoreController.close(); // 新增：关闭master分数流
+  }
+
+  // 修复版本：恢复游戏状态（用于从存档加载）
+  void restoreGameStateSafe(
+      List<PuzzlePiece?> placedPieces, List<PuzzlePiece> availablePieces) {
+    print('=== 开始恢复游戏状态 ===');
+    print('需要恢复的已放置拼图块: ${placedPieces.length}个');
+    print('需要恢复的可用拼图块: ${availablePieces.length}个');
+
+    // 先测试当前列表的可修改性
+    testListModifiability();
+
+    try {
+      // 方法1：尝试直接替换列表引用
+      print('尝试方法1: 直接替换列表引用');
+      _placedPieces = List<PuzzlePiece?>.from(placedPieces, growable: true);
+      _availablePieces =
+          List<PuzzlePiece>.from(availablePieces, growable: true);
+
+      // 验证替换是否成功
+      print('替换后已放置列表长度: ${_placedPieces.length}');
+      print('替换后可用列表长度: ${_availablePieces.length}');
+
+      // 通知状态更新
+      _statusController.add(_status);
+
+      print('✅ 游戏状态恢复成功 (方法1)');
+    } catch (e) {
+      print('❌ 方法1失败: $e');
+
+      // 方法2：创建全新的可修改列表
+      try {
+        print('尝试方法2: 创建全新的可修改列表');
+
+        // 创建全新的列表
+        final newPlacedPieces = <PuzzlePiece?>[];
+        final newAvailablePieces = <PuzzlePiece>[];
+
+        // 填充数据
+        newPlacedPieces.addAll(placedPieces);
+        newAvailablePieces.addAll(availablePieces);
+
+        // 替换引用
+        _placedPieces = newPlacedPieces;
+        _availablePieces = newAvailablePieces;
+
+        _statusController.add(_status);
+        print('✅ 游戏状态恢复成功 (方法2)');
+      } catch (e2) {
+        print('❌ 方法2也失败: $e2');
+        throw Exception('无法恢复游戏状态，所有方法都失败了: $e2');
+      }
+    }
+
+    print('=== 游戏状态恢复完成 ===');
+  }
+
+  // 设置已用时间（用于从存档恢复）
+  void setElapsedTime(int seconds) {
+    _elapsedSeconds = seconds;
+    _timerController.add(_elapsedSeconds);
   }
 }

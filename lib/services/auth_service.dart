@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  static const String _baseUrl = 'http://localhost:5000/api';
+  static const String _baseUrl = 'http://10.195.131.11:5000/api';
 
   String? _token;
   Map<String, dynamic>? _currentUser;
@@ -248,5 +248,103 @@ class AuthService {
       }
       throw Exception('网络连接失败，请检查服务器是否启动');
     }
+  }
+
+  // 提交游戏存档
+  Future<void> submitSave(Map<String, dynamic> saveData) async {
+    if (!isLoggedIn) {
+      throw Exception('请先登录');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/save-game'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode(saveData),
+      );
+
+      if (response.statusCode == 201) {
+        return;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '提交存档失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
+
+  // 加载游戏存档
+  Future<Map<String, dynamic>?> loadSave(
+      String gameMode, int difficulty) async {
+    if (!isLoggedIn) {
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/load-save?gameMode=$gameMode&difficulty=$difficulty'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 404) {
+        return null; // 存档不存在
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '加载存档失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
+
+  // 删除游戏存档
+  Future<void> deleteSave(String gameMode, int difficulty) async {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse(
+            '$_baseUrl/delete-save?gameMode=$gameMode&difficulty=$difficulty'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '删除存档失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
+
+  // Placeholder: Add if getToken doesn't exist
+  static Future<String?> getToken() async {
+    // Implement token retrieval, e.g., from shared preferences or secure storage
+    // For now, return a dummy token or null
+    return 'dummy-token'; // Replace with actual implementation
   }
 }

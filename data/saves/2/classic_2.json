@@ -1,0 +1,37 @@
+{
+  "gameMode": "classic",
+  "difficulty": 2,
+  "elapsedSeconds": 17,
+  "currentScore": 1566,
+  "imageSource": "assets/images/default_puzzle.jpg",
+  "placedPiecesIds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "availablePiecesIds": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "user_id": 2,
+  "saved_at": "2025-09-08T15:20:39.799747"
+}
