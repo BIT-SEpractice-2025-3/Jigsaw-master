@@ -551,8 +551,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         return 'medium';
       case 3:
         return 'hard';
+      case 4:
+        return 'master';
       default:
-        return 'easy';
+        return 'master';
     }
   }
 
