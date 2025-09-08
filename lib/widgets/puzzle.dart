@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
-import 'dart:math' as Math;
 import '../models/puzzle_piece.dart';
 import 'home.dart';
 import '../services/puzzle_generate_service.dart';
@@ -92,7 +91,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
   final GlobalKey _puzzleAreaKey = GlobalKey();
 
   PuzzlePiece? _currentDraggingPiece;
-  int _currentDraggingIndex = -1;
   bool _shouldHighlightTarget = false;
   Offset _lastDragPosition = Offset.zero;
 
@@ -484,7 +482,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                     // 拼图放置区
                     Expanded(
                         child: Container(
-                      key: _puzzleAreaKey,
+                      // 将 GlobalKey 移到真正的拼图正方形容器（在 _buildPuzzlePlacementArea 内）
                       child: _buildPuzzlePlacementArea(),
                     )),
                   ],
@@ -606,6 +604,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
     return Center(
       child: Container(
+        key: _puzzleAreaKey,
         width: squareSize,
         height: squareSize,
         decoration: BoxDecoration(
@@ -680,7 +679,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                     // 重置拖动状态
                     setState(() {
                       _currentDraggingPiece = null;
-                      _currentDraggingIndex = -1;
+                      // _currentDraggingIndex = -1;
                       _shouldHighlightTarget = false;
                     });
                     return;
@@ -706,7 +705,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                   // 重置拖动状态
                   setState(() {
                     _currentDraggingPiece = null;
-                    _currentDraggingIndex = -1;
+                    // _currentDraggingIndex = -1;
                     _shouldHighlightTarget = false;
                   });
                 },
@@ -797,7 +796,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
         // 记录当前拖动的拼图信息
         setState(() {
           _currentDraggingPiece = piece;
-          _currentDraggingIndex = index;
           _shouldHighlightTarget = false; // 拖动开始时不立即显示高亮
         });
       },
@@ -806,40 +804,37 @@ class _PuzzlePageState extends State<PuzzlePage> {
         if (_currentDraggingPiece != null) {
           _lastDragPosition = details.globalPosition;
 
-          // 尝试获取拼图放置区域的RenderBox
+          // 使用拼图正方形区域的 RenderBox，将全局坐标转换为局部坐标
           final RenderBox? puzzleAreaBox =
               _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
-
           if (puzzleAreaBox == null) {
-            setState(() {
-              _shouldHighlightTarget = false;
-            });
+            setState(() => _shouldHighlightTarget = false);
             return;
           }
+          final Offset local = puzzleAreaBox.globalToLocal(_lastDragPosition);
 
-          final localPosition = puzzleAreaBox.globalToLocal(_lastDragPosition);
+          // 计算该拼图块在拼图区域中的目标矩形（考虑 pivot 偏移与缩放）
+          final piece = _currentDraggingPiece!;
+          final double left =
+              piece.position.dx * _scale - piece.pivot.dx * _scale;
+          final double top =
+              piece.position.dy * _scale - piece.pivot.dy * _scale;
+          final double w = piece.image.width.toDouble() * _scale;
+          final double h = piece.image.height.toDouble() * _scale;
+          Rect targetRect = Rect.fromLTWH(left, top, w, h);
 
-          final targetCenter = Offset(
-              _currentDraggingPiece!.position.dx * _scale,
-              _currentDraggingPiece!.position.dy * _scale);
-
-          // 使用图片真实尺寸计算阈值，保持与渲染一致
-          final maxDimension = Math.max(
-              _currentDraggingPiece!.image.width.toDouble() * _scale,
-              _currentDraggingPiece!.image.height.toDouble() * _scale);
-          final highlightThreshold = maxDimension * 0.8;
-
-          final distance = (localPosition - targetCenter).distance;
+          // 增加一定的容忍度，提升拖放手感（随尺寸按比例放大）
+          final double tolerance = (w + h) * 0.05; // 约 5% 的裕量
+          targetRect = targetRect.inflate(tolerance);
 
           setState(() {
-            _shouldHighlightTarget = distance <= highlightThreshold;
+            _shouldHighlightTarget = targetRect.contains(local);
           });
         }
       },
       onDragEnd: (details) {
         // 拖动结束重置信息
         _currentDraggingPiece = null;
-        _currentDraggingIndex = -1;
         setState(() {
           _shouldHighlightTarget = false;
         });
