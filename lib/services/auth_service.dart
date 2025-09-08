@@ -249,4 +249,66 @@ class AuthService {
       throw Exception('网络连接失败，请检查服务器是否启动');
     }
   }
+
+  // 提交游戏存档
+  Future<void> submitSave(Map<String, dynamic> saveData) async {
+    if (!isLoggedIn) {
+      throw Exception('请先登录');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/save-game'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode(saveData),
+      );
+
+      if (response.statusCode == 201) {
+        return;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '提交存档失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
+
+  // 加载游戏存档
+  Future<Map<String, dynamic>?> loadSave(
+      String gameMode, int difficulty) async {
+    if (!isLoggedIn) {
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$_baseUrl/load-save?gameMode=$gameMode&difficulty=$difficulty'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 404) {
+        return null; // 存档不存在
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '加载存档失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
 }

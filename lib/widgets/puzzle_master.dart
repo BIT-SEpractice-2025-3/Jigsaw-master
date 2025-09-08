@@ -8,6 +8,7 @@ import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../services/game_save_service.dart';
 import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
+import '../services/auth_service.dart';
 
 class PuzzleMasterPage extends StatefulWidget {
   final String imageSource;
@@ -751,53 +752,30 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：检查存档并初始化游戏
   Future<void> _checkForSaveAndInitialize() async {
-    // 使用存档检测对话框
-    final shouldLoadSave = await SaveDetectionDialog.showSaveDialog(
-      context: context,
-      gameMode: 'master',
-      difficulty: widget.difficulty,
-    );
+    // 尝试从服务器加载存档
+    final authService = AuthService();
+    if (authService.isLoggedIn) {
+      final saveData = await authService.loadSave('master', widget.difficulty);
+      if (saveData != null) {
+        // 使用存档检测对话框
+        final shouldLoadSave = await SaveDetectionDialog.showSaveDialog(
+          context: context,
+          gameMode: 'master',
+          difficulty: widget.difficulty,
+        );
 
-    if (shouldLoadSave == true) {
-      await _loadGameFromSave();
-      return;
-    } else if (shouldLoadSave == false) {
-      // 删除旧存档，开始新游戏
-      await GameSaveService.deleteSave('master', widget.difficulty);
+        if (shouldLoadSave == true) {
+          await _loadGameFromServer(saveData);
+          return;
+        } else if (shouldLoadSave == false) {
+          // 删除服务器存档
+          // 这里可以添加删除服务器存档的逻辑，但暂时跳过
+        }
+      }
     }
 
     // 开始新游戏
     _initializeNewGame();
-  }
-
-  // 新增：从存档恢复游戏
-  Future<void> _resumeFromSave(GameSave savedGame) async {
-    // 先生成拼图块
-    final pieces = await _generateService.generatePuzzle(
-        savedGame.imageSource, widget.difficulty);
-
-    // 从存档恢复大师模式拼图块
-    final masterPieces = savedGame.masterPieces?.map((data) {
-          final piece = pieces.firstWhere((p) => p.nodeId == data.nodeId);
-          return MasterPieceState(
-            piece: piece,
-            position: Offset(data.positionX, data.positionY),
-            scale: data.scale,
-            rotation: data.rotation,
-            group: data.group,
-          );
-        }).toList() ??
-        [];
-
-    _gameService.masterPieces = masterPieces;
-    setState(() {
-      _gameInitialized = true;
-      _isGameRunning = true;
-      _currentScore = savedGame.currentScore;
-      _currentTime = savedGame.elapsedSeconds;
-    });
-    _gameService.setElapsedTime(savedGame.elapsedSeconds);
-    _gameService.startGame();
   }
 
   // 新增：初始化新游戏
@@ -834,29 +812,52 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             ))
         .toList();
 
-    await GameSaveService.saveGame(
-      gameMode: 'master',
-      difficulty: widget.difficulty,
-      elapsedSeconds: _currentTime,
-      currentScore: _currentScore,
-      imageSource: widget.imageSource,
-      placedPieces: [], // 空列表
-      availablePieces: [], // 空列表
-      masterData: {'pieces': currentPieces.map((p) => p.toJson()).toList()},
-    );
+    // 发送存档到服务器
+    final authService = AuthService();
+    if (authService.isLoggedIn) {
+      final saveData = {
+        'gameMode': 'master',
+        'difficulty': widget.difficulty,
+        'elapsedSeconds': _currentTime,
+        'currentScore': _currentScore,
+        'imageSource': widget.imageSource,
+        'placedPiecesIds': [],
+        'availablePiecesIds': [],
+        'masterPieces': currentPieces.map((p) => p.toJson()).toList(),
+      };
+      await authService.submitSave(saveData);
+      print('大师模式存档已发送到服务器');
+    }
   }
 
-  // 新增：从存档加载游戏
-  Future<void> _loadGameFromSave() async {
+  // 新增：从服务器加载游戏
+  Future<void> _loadGameFromServer(Map<String, dynamic> saveData) async {
     try {
-      final gameSave =
-          await GameSaveService.loadGame('master', widget.difficulty);
-      if (gameSave == null) {
-        throw Exception('存档数据无效');
-      }
+      // 先生成拼图块
+      final pieces = await _generateService.generatePuzzle(
+          saveData['imageSource'], widget.difficulty);
 
-      // 从存档恢复游戏
-      await _resumeFromSave(gameSave);
+      // 从存档恢复大师模式拼图块
+      final masterPieces = (saveData['masterPieces'] as List).map((data) {
+        final piece = pieces.firstWhere((p) => p.nodeId == data['nodeId']);
+        return MasterPieceState(
+          piece: piece,
+          position: Offset(data['positionX'], data['positionY']),
+          scale: data['scale'],
+          rotation: data['rotation'],
+          group: data['group'],
+        );
+      }).toList();
+
+      _gameService.masterPieces = masterPieces;
+      setState(() {
+        _gameInitialized = true;
+        _isGameRunning = true;
+        _currentScore = saveData['currentScore'];
+        _currentTime = saveData['elapsedSeconds'];
+      });
+      _gameService.setElapsedTime(saveData['elapsedSeconds']);
+      _gameService.startGame();
 
       // 显示加载成功提示
       if (mounted) {
@@ -875,10 +876,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         );
       }
     } catch (e) {
-      print('加载存档详细错误: $e');
-      setState(() {
-        // 错误处理
-      });
+      print('加载服务器存档详细错误: $e');
 
       // 加载失败时显示错误提示
       if (mounted) {
@@ -896,8 +894,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
           ),
         );
 
-        // 删除损坏的存档并开始新游戏
-        await GameSaveService.deleteSave('master', widget.difficulty);
+        // 开始新游戏
         _initializeNewGame();
       }
     }

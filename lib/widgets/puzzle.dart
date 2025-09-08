@@ -11,6 +11,7 @@ import '../services/puzzle_game_service.dart';
 import '../services/game_save_service.dart';
 import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
+import '../services/auth_service.dart';
 
 // 修改自定义画笔类，解决发光提示位置问题
 class PuzzlePieceHighlightPainter extends CustomPainter {
@@ -144,19 +145,27 @@ class _PuzzlePageState extends State<PuzzlePage> {
   // 检查存档并初始化游戏
   Future<void> _checkForSaveAndInitialize() async {
     try {
-      // 使用存档检测对话框
-      final shouldLoadSave = await SaveDetectionDialog.showSaveDialog(
-        context: context,
-        gameMode: 'classic',
-        difficulty: widget.difficulty,
-      );
+      // 尝试从服务器加载存档
+      final authService = AuthService();
+      if (authService.isLoggedIn) {
+        final saveData =
+            await authService.loadSave('classic', widget.difficulty);
+        if (saveData != null) {
+          // 使用存档检测对话框
+          final shouldLoadSave = await SaveDetectionDialog.showSaveDialog(
+            context: context,
+            gameMode: 'classic',
+            difficulty: widget.difficulty,
+          );
 
-      if (shouldLoadSave == true) {
-        await _loadGameFromSave();
-        return;
-      } else if (shouldLoadSave == false) {
-        // 删除旧存档，开始新游戏
-        await GameSaveService.deleteSave('classic', widget.difficulty);
+          if (shouldLoadSave == true) {
+            await _loadGameFromServer(saveData);
+            return;
+          } else if (shouldLoadSave == false) {
+            // 删除服务器存档
+            // 这里可以添加删除服务器存档的逻辑，但暂时跳过
+          }
+        }
       }
 
       // 开始新游戏
@@ -168,32 +177,26 @@ class _PuzzlePageState extends State<PuzzlePage> {
     }
   }
 
-  // 从存档加载游戏
-  Future<void> _loadGameFromSave() async {
+  // 从服务器加载游戏
+  Future<void> _loadGameFromServer(Map<String, dynamic> saveData) async {
     try {
-      final gameSave =
-          await GameSaveService.loadGame('classic', widget.difficulty);
-      if (gameSave == null) {
-        throw Exception('存档数据无效');
-      }
-
       // 使用存档中的图片路径
       final pieces = await _generator.generatePuzzle(
-          gameSave.imageSource, widget.difficulty);
+          saveData['imageSource'], widget.difficulty);
       _targetImage = _generator.lastLoadedImage;
 
       // 初始化游戏服务但不立即开始
       await _gameService.initGameSafe(pieces, widget.difficulty);
 
       // 恢复拼图块状态
-      _restorePuzzleState(pieces, gameSave);
+      _restorePuzzleState(pieces, GameSave.fromJson(saveData));
 
       // 恢复游戏状态
-      _currentTime = gameSave.elapsedSeconds;
-      _currentScore = gameSave.currentScore;
+      _currentTime = saveData['elapsedSeconds'];
+      _currentScore = saveData['currentScore'];
 
       // 设置游戏计时器的起始时间
-      _gameService.setElapsedTime(gameSave.elapsedSeconds);
+      _gameService.setElapsedTime(saveData['elapsedSeconds']);
 
       // 启动游戏
       _gameService.startGame();
@@ -216,7 +219,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
         );
       }
     } catch (e) {
-      print('加载存档详细错误: $e');
+      print('加载服务器存档详细错误: $e');
       setState(() {
         _errorMessage = '加载存档失败: $e';
       });
@@ -237,8 +240,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
           ),
         );
 
-        // 删除损坏的存档并开始新游戏
-        await GameSaveService.deleteSave('classic', widget.difficulty);
+        // 开始新游戏
         await _initializeGame();
       }
     }
@@ -434,24 +436,25 @@ class _PuzzlePageState extends State<PuzzlePage> {
         return;
       }
 
-      final success = await GameSaveService.saveGame(
-        gameMode: 'classic',
-        difficulty: widget.difficulty,
-        elapsedSeconds: _currentTime,
-        currentScore: _currentScore,
-        imageSource: widget.imagePath ?? 'assets/images/default_puzzle.jpg',
-        placedPieces: _gameService.placedPieces,
-        availablePieces: _gameService.availablePieces,
-      );
-
-      if (success) {
-        _lastSaveTime = DateTime.now(); // 更新最后保存时间
-        print('游戏进度已保存');
-      } else {
-        print('游戏进度保存失败');
+      // 发送存档到服务器
+      final authService = AuthService();
+      if (authService.isLoggedIn) {
+        final saveData = {
+          'gameMode': 'classic',
+          'difficulty': widget.difficulty,
+          'elapsedSeconds': _currentTime,
+          'currentScore': _currentScore,
+          'imageSource': widget.imagePath ?? 'assets/images/default_puzzle.jpg',
+          'placedPiecesIds':
+              _gameService.placedPieces.map((p) => p?.nodeId).toList(),
+          'availablePiecesIds':
+              _gameService.availablePieces.map((p) => p.nodeId).toList(),
+        };
+        await authService.submitSave(saveData);
+        print('存档已发送到服务器');
       }
     } catch (e) {
-      print('保存游戏进度时出错: $e');
+      print('静默保存游戏进度时出错: $e');
     }
   }
 
@@ -481,20 +484,22 @@ class _PuzzlePageState extends State<PuzzlePage> {
         return;
       }
 
-      final success = await GameSaveService.saveGame(
-        gameMode: 'classic',
-        difficulty: widget.difficulty,
-        elapsedSeconds: _currentTime,
-        currentScore: _currentScore,
-        imageSource: widget.imagePath ?? 'assets/images/default_puzzle.jpg',
-        placedPieces: _gameService.placedPieces,
-        availablePieces: _gameService.availablePieces,
-      );
-
-      if (success) {
-        _lastSaveTime = DateTime.now();
-        print(
-            '游戏进度静默保存成功 (时间: ${_formatTime(_currentTime)}, 分数: $_currentScore)');
+      // 发送存档到服务器
+      final authService = AuthService();
+      if (authService.isLoggedIn) {
+        final saveData = {
+          'gameMode': 'classic',
+          'difficulty': widget.difficulty,
+          'elapsedSeconds': _currentTime,
+          'currentScore': _currentScore,
+          'imageSource': widget.imagePath ?? 'assets/images/default_puzzle.jpg',
+          'placedPiecesIds':
+              _gameService.placedPieces.map((p) => p?.nodeId).toList(),
+          'availablePiecesIds':
+              _gameService.availablePieces.map((p) => p.nodeId).toList(),
+        };
+        await authService.submitSave(saveData);
+        print('存档已发送到服务器');
       }
     } catch (e) {
       print('静默保存游戏进度时出错: $e');
