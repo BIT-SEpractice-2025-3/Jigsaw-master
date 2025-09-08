@@ -487,12 +487,12 @@ class PuzzleGameService {
   // 简化放置拼图的逻辑，不再需要位置参数
   bool placePiece(int pieceIndex, int targetPosition) {
     // 验证参数
-    if (_status != GameStatus.inProgress) return false;
-    if (targetPosition < 0 || targetPosition >= _placedPieces.length)
+    if (_status != GameStatus.inProgress && _status != GameStatus.notStarted) return false;
+    if (targetPosition < 0 || targetPosition >= _placedPieces.length) {
       return false;
+    }
     if (_placedPieces[targetPosition] != null) return false;
     if (pieceIndex < 0 || pieceIndex >= _availablePieces.length) return false;
-
     // 获取并移除待放置的拼图块（原始）
     final original = _availablePieces.removeAt(pieceIndex);
 

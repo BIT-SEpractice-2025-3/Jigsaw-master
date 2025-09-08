@@ -11,57 +11,46 @@ class SaveDetectionDialog {
     required String gameMode,
     required int difficulty,
   }) async {
-    // 检查是否有存档
-    final hasSave = await GameSaveService.hasSave(gameMode, difficulty);
-
-    if (!hasSave) {
-      return null; // 没有存档，直接开始新游戏
-    }
-
-    // 获取存档信息
-    final gameSave = await GameSaveService.loadGame(gameMode, difficulty);
-    if (gameSave == null) {
-      return null; // 存档数据无效
-    }
-
+    print("asssssssssssssssssssssss");
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
-              Icon(Icons.save_alt, color: Colors.blue, size: 28),
+              Icon(Icons.save, color: Colors.blue, size: 28),
               SizedBox(width: 8),
-              Text('发现历史存档'),
+              Text('发现游戏存档'),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('检测到您有未完成的游戏，是否继续上次的进度？'),
-              SizedBox(height: 16),
+              Text('检测到您有未完成的游戏进度：'),
+              SizedBox(height: 8),
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
+                  border: Border.all(color: Colors.blue.shade200, width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.gamepad,
-                            color: Colors.blue.shade600, size: 16),
+                        Icon(Icons.games,
+                            size: 16, color: Colors.blue.shade700),
                         SizedBox(width: 6),
                         Text(
-                          '${GameSaveService.getGameModeText(gameSave.gameMode)} - ${GameSaveService.getDifficultyText(gameSave.difficulty)}',
+                          '游戏模式: ${gameMode == 'classic' ? '经典模式' : '大师模式'}',
                           style: TextStyle(
+                            fontSize: 14,
                             color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -69,83 +58,58 @@ class SaveDetectionDialog {
                     SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.access_time,
-                            color: Colors.blue.shade600, size: 16),
+                        Icon(Icons.star,
+                            size: 16, color: Colors.amber.shade700),
                         SizedBox(width: 6),
                         Text(
-                          '游戏时长: ${GameSaveService.formatGameTime(gameSave.elapsedSeconds)}',
-                          style: TextStyle(color: Colors.blue.shade700),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: Colors.blue.shade600, size: 16),
-                        SizedBox(width: 6),
-                        Text(
-                          '当前分数: ${gameSave.currentScore}',
-                          style: TextStyle(color: Colors.blue.shade700),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.schedule,
-                            color: Colors.blue.shade600, size: 16),
-                        SizedBox(width: 6),
-                        Text(
-                          '保存时间: ${GameSaveService.formatSaveTime(gameSave.saveTime)}',
-                          style: TextStyle(color: Colors.blue.shade700),
+                          '难度等级: $difficulty',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.amber.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 12),
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber,
-                        color: Colors.orange.shade600, size: 16),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '选择"新游戏"将删除当前存档',
-                        style: TextStyle(
-                          color: Colors.orange.shade700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
+              SizedBox(height: 16),
+              Text(
+                '是否要继续之前的游戏进度？',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
+              onPressed: () {
+                Navigator.of(context).pop(false); // 不加载存档
+              },
+              child: Text('开始新游戏'),
               style: TextButton.styleFrom(
-                foregroundColor: Colors.grey.shade600,
+                foregroundColor: Colors.grey.shade700,
               ),
-              child: Text('新游戏'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
+              onPressed: () {
+                Navigator.of(context).pop(true); // 加载存档
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
               ),
-              child: Text('继续游戏'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.restore, size: 16),
+                  SizedBox(width: 6),
+                  Text('继续游戏'),
+                ],
+              ),
             ),
           ],
         );
@@ -156,7 +120,7 @@ class SaveDetectionDialog {
   // 快速存档信息预览
   static Widget buildSaveIndicator({
     required String gameMode,
-    required int difficulty,
+    required String difficulty,
   }) {
     return FutureBuilder<bool>(
       future: GameSaveService.hasSave(gameMode, difficulty),

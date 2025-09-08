@@ -5,10 +5,50 @@ import '/models/puzzle_piece.dart';
 import '/services/puzzle_game_service.dart';
 import '/services/puzzle_generate_service.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
-import '../services/game_save_service.dart';
 import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
 import '../services/auth_service.dart';
+
+// Add MasterPieceData definition here since we're removing game_save_service.dart
+class MasterPieceData {
+  final int nodeId;
+  final double positionX;
+  final double positionY;
+  final double scale;
+  final double rotation;
+  final int group;
+
+  MasterPieceData({
+    required this.nodeId,
+    required this.positionX,
+    required this.positionY,
+    required this.scale,
+    required this.rotation,
+    required this.group,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'nodeId': nodeId,
+      'positionX': positionX,
+      'positionY': positionY,
+      'scale': scale,
+      'rotation': rotation,
+      'group': group,
+    };
+  }
+
+  factory MasterPieceData.fromJson(Map<String, dynamic> json) {
+    return MasterPieceData(
+      nodeId: json['nodeId'],
+      positionX: json['positionX'],
+      positionY: json['positionY'],
+      scale: json['scale'],
+      rotation: json['rotation'],
+      group: json['group'],
+    );
+  }
+}
 
 class PuzzleMasterPage extends StatefulWidget {
   final String imageSource;
@@ -372,8 +412,13 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：显示游戏完成对话框
   void _showCompletionDialog() {
-    // 游戏完成，删除存档
-    GameSaveService.deleteSave('master', widget.difficulty);
+    // 游戏完成，删除服务器存档
+    final authService = AuthService();
+    if (authService.isLoggedIn) {
+      authService
+          .deleteSave('master', widget.difficulty)
+          .catchError((e) => print('删除服务器存档失败: $e'));
+    }
 
     showDialog(
       context: context,
@@ -752,28 +797,28 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：检查存档并初始化游戏
   Future<void> _checkForSaveAndInitialize() async {
-    // 尝试从服务器加载存档
     final authService = AuthService();
     if (authService.isLoggedIn) {
       final saveData = await authService.loadSave('master', widget.difficulty);
       if (saveData != null) {
-        // 使用存档检测对话框
         final shouldLoadSave = await SaveDetectionDialog.showSaveDialog(
           context: context,
           gameMode: 'master',
           difficulty: widget.difficulty,
         );
-
         if (shouldLoadSave == true) {
           await _loadGameFromServer(saveData);
           return;
         } else if (shouldLoadSave == false) {
-          // 删除服务器存档
-          // 这里可以添加删除服务器存档的逻辑，但暂时跳过
+          try {
+            await authService.deleteSave('master', widget.difficulty);
+            print('用户选择不加载，已删除服务器存档');
+          } catch (e) {
+            print('删除服务器存档失败: $e');
+          }
         }
       }
     }
-
     // 开始新游戏
     _initializeNewGame();
   }
@@ -812,7 +857,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             ))
         .toList();
 
-    // 发送存档到服务器
     final authService = AuthService();
     if (authService.isLoggedIn) {
       final saveData = {
@@ -826,7 +870,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         'masterPieces': currentPieces.map((p) => p.toJson()).toList(),
       };
       await authService.submitSave(saveData);
-      print('大师模式存档已发送到服务器');
+      print('Master mode save sent to server');
     }
   }
 
@@ -849,7 +893,23 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         );
       }).toList();
 
-      _gameService.masterPieces = masterPieces;
+      // 重新初始化游戏服务
+      _gameService.resetMasterGame();
+      await _initializeGame(
+          ui.Size(MediaQuery.of(context).size.width,
+              MediaQuery.of(context).size.height),
+          pieces);
+
+      // 尝试设置恢复的状态
+      try {
+        _gameService.masterPieces = masterPieces;
+        print('成功恢复大师模式拼图状态: ${masterPieces.length} 个拼图块');
+      } catch (e) {
+        print('无法直接设置 masterPieces，尝试其他方式: $e');
+        // 如果无法直接设置，尝试通过其他方式恢复
+        // 这里可能需要修改 PuzzleGameService 来支持状态恢复
+      }
+
       setState(() {
         _gameInitialized = true;
         _isGameRunning = true;

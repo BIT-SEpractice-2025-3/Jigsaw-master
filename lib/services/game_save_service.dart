@@ -1,10 +1,10 @@
 // 游戏存档服务
 // 负责保存和加载游戏进度
 
+import 'dart:ui'; // For Offset
+import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/material.dart';
-import '../models/puzzle_piece.dart';
+import 'auth_service.dart'; // Assuming this provides token management
 
 // 游戏存档数据模型
 class GameSave {
@@ -153,156 +153,69 @@ class MasterModeSaveData {
 }
 
 class GameSaveService {
-  static const String _saveDirectory = 'game_saves';
+  static const String baseUrl = 'http://localhost:5000/api'; // Adjust if needed
 
-  // 获取存档文件路径
-  static String _getSaveFilePath(String gameMode, int difficulty) {
-    return '$_saveDirectory/${gameMode}_difficulty_$difficulty.json';
-  }
-
-  // 检查是否有存档
-  static Future<bool> hasSave(String gameMode, int difficulty) async {
-    try {
-      final filePath = _getSaveFilePath(gameMode, difficulty);
-      final file = File(filePath);
-      return await file.exists();
-    } catch (e) {
-      print('检查存档失败: $e');
-      return false;
+  static Future<void> saveGame(
+      String gameMode, String difficulty, Map<String, dynamic> saveData) async {
+    final token = await AuthService.getToken(); // Assuming static method
+    final response = await http.post(
+      Uri.parse('$baseUrl/save-game'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'gameMode': gameMode,
+        'difficulty': difficulty,
+        ...saveData,
+      }),
+    );
+    if (response.statusCode != 201) {
+      throw Exception('Failed to save game: ${response.body}');
     }
   }
 
-  // 保存游戏进度
-  static Future<bool> saveGame({
-    required String gameMode,
-    required int difficulty,
-    required int elapsedSeconds,
-    required int currentScore,
-    required String imageSource,
-    required List<dynamic> placedPieces, // 改为dynamic避免类型依赖
-    required List<dynamic> availablePieces,
-    Map<String, dynamic>? masterData, // 改为Map存储master模式数据
-  }) async {
-    try {
-      // 确保存档目录存在
-      final directory = Directory(_saveDirectory);
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
-      // 提取拼图块ID
-      final placedPiecesIds = <int?>[];
-      final availablePiecesIds = <int>[];
-
-      for (final piece in placedPieces) {
-        if (piece != null && piece.nodeId != null) {
-          placedPiecesIds.add(piece.nodeId as int);
-        } else {
-          placedPiecesIds.add(null);
-        }
-      }
-
-      for (final piece in availablePieces) {
-        if (piece != null && piece.nodeId != null) {
-          availablePiecesIds.add(piece.nodeId as int);
-        }
-      }
-
-      // 创建存档数据
-      final gameSave = GameSave(
-        gameMode: gameMode,
-        difficulty: difficulty,
-        elapsedSeconds: elapsedSeconds,
-        currentScore: currentScore,
-        saveTime: DateTime.now(),
-        imageSource: imageSource,
-        placedPiecesIds: placedPiecesIds,
-        availablePiecesIds: availablePiecesIds,
-        masterPieces: masterData?['pieces']
-            ?.map<MasterPieceData>((data) => MasterPieceData.fromJson(data))
-            .toList(),
-      );
-
-      // 写入文件
-      final filePath = _getSaveFilePath(gameMode, difficulty);
-      final file = File(filePath);
-      await file.writeAsString(jsonEncode(gameSave.toJson()));
-
-      print('游戏存档保存成功: $filePath');
-      return true;
-    } catch (e) {
-      print('保存游戏失败: $e');
-      return false;
+  static Future<Map<String, dynamic>?> loadGame(
+      String gameMode, String difficulty) async {
+    final token = await AuthService.getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/load-save?gameMode=$gameMode&difficulty=$difficulty'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      return null; // No save found
+    } else {
+      throw Exception('Failed to load game: ${response.body}');
     }
   }
 
-  // 加载游戏进度
-  static Future<GameSave?> loadGame(String gameMode, int difficulty) async {
-    try {
-      final filePath = _getSaveFilePath(gameMode, difficulty);
-      final file = File(filePath);
-
-      if (!await file.exists()) {
-        return null;
-      }
-
-      final jsonString = await file.readAsString();
-      final jsonData = jsonDecode(jsonString);
-
-      print('游戏存档加载成功: $filePath');
-      return GameSave.fromJson(jsonData);
-    } catch (e) {
-      print('加载游戏失败: $e');
-      return null;
+  static Future<void> deleteGame(String gameMode, String difficulty) async {
+    final token = await AuthService.getToken();
+    final response = await http.delete(
+      Uri.parse(
+          '$baseUrl/delete-save?gameMode=$gameMode&difficulty=$difficulty'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete game: ${response.body}');
     }
   }
 
-  // 删除存档
-  static Future<bool> deleteSave(String gameMode, int difficulty) async {
-    try {
-      final filePath = _getSaveFilePath(gameMode, difficulty);
-      final file = File(filePath);
-
-      if (await file.exists()) {
-        await file.delete();
-        print('游戏存档删除成功: $filePath');
-      }
-
-      return true;
-    } catch (e) {
-      print('删除存档失败: $e');
-      return false;
-    }
-  }
-
-  // 获取所有存档信息
-  static Future<List<GameSave>> getAllSaves() async {
-    try {
-      final directory = Directory(_saveDirectory);
-      if (!await directory.exists()) {
-        return [];
-      }
-
-      final files = await directory.list().toList();
-      final saves = <GameSave>[];
-
-      for (final file in files) {
-        if (file is File && file.path.endsWith('.json')) {
-          try {
-            final jsonString = await file.readAsString();
-            final jsonData = jsonDecode(jsonString);
-            saves.add(GameSave.fromJson(jsonData));
-          } catch (e) {
-            print('读取存档文件失败: ${file.path}, $e');
-          }
-        }
-      }
-
-      return saves;
-    } catch (e) {
-      print('获取所有存档失败: $e');
-      return [];
-    }
+  static Future<bool> hasSave(String gameMode, String difficulty) async {
+    final token = await AuthService.getToken();
+    final response = await http.get(
+      Uri.parse('$baseUrl/load-save?gameMode=$gameMode&difficulty=$difficulty'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return response.statusCode == 200;
   }
 
   // 格式化存档时间显示

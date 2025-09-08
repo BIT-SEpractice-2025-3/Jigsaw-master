@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  static const String _baseUrl = 'http://localhost:5000/api';
+  static const String _baseUrl = 'http://10.195.131.11:5000/api';
 
   String? _token;
   Map<String, dynamic>? _currentUser;
@@ -310,5 +310,41 @@ class AuthService {
       }
       throw Exception('网络连接失败，请检查服务器是否启动');
     }
+  }
+
+  // 删除游戏存档
+  Future<void> deleteSave(String gameMode, int difficulty) async {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse(
+            '$_baseUrl/delete-save?gameMode=$gameMode&difficulty=$difficulty'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '删除存档失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
+
+  // Placeholder: Add if getToken doesn't exist
+  static Future<String?> getToken() async {
+    // Implement token retrieval, e.g., from shared preferences or secure storage
+    // For now, return a dummy token or null
+    return 'dummy-token'; // Replace with actual implementation
   }
 }

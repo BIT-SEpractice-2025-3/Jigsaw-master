@@ -391,7 +391,7 @@ def submit_save():
         # 保存到文件
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(save_data, f, ensure_ascii=False, indent=2)
-        
+        print("成功")
         return jsonify({'message': '存档保存成功'}), 201
         
     except Exception as e:
@@ -425,6 +425,31 @@ def load_save():
     except Exception as e:
         return jsonify({'error': f'加载存档失败: {str(e)}'}), 500
 
+@app.route('/api/delete-save', methods=['DELETE'])
+@token_required
+def delete_save():
+    """删除游戏存档"""
+    try:
+        game_mode = request.args.get('gameMode')
+        difficulty = request.args.get('difficulty')
+        
+        if not game_mode or not difficulty:
+            return jsonify({'error': '缺少参数 gameMode 或 difficulty'}), 400
+        
+        # 构建存档文件名
+        filename = f"{game_mode}_{difficulty}.json"
+        user_id = request.user['user_id']
+        filepath = os.path.join(DATA_DIR, 'saves', str(user_id), filename)
+        
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return jsonify({'message': '存档删除成功'}), 200
+        else:
+            return jsonify({'message': '存档不存在'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'删除存档失败: {str(e)}'}), 500
+
 # 健康检查
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -456,5 +481,6 @@ if __name__ == '__main__':
     print("GET  /api/user/profile - 获取用户资料")
     print("POST /api/save-game - 提交游戏存档")
     print("GET  /api/load-save - 加载游戏存档")
+    print("DELETE /api/delete-save - 删除游戏存档")
     
     app.run(debug=True, host='0.0.0.0', port=5000)

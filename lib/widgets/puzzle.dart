@@ -8,7 +8,6 @@ import '../models/puzzle_piece.dart';
 import 'home.dart';
 import '../services/puzzle_generate_service.dart';
 import '../services/puzzle_game_service.dart';
-import '../services/game_save_service.dart';
 import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
 import '../services/auth_service.dart';
@@ -145,7 +144,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
   // 检查存档并初始化游戏
   Future<void> _checkForSaveAndInitialize() async {
     try {
-      // 尝试从服务器加载存档
+      // 只检查服务器上的存档
       final authService = AuthService();
       if (authService.isLoggedIn) {
         final saveData =
@@ -157,13 +156,17 @@ class _PuzzlePageState extends State<PuzzlePage> {
             gameMode: 'classic',
             difficulty: widget.difficulty,
           );
-
           if (shouldLoadSave == true) {
             await _loadGameFromServer(saveData);
             return;
           } else if (shouldLoadSave == false) {
-            // 删除服务器存档
-            // 这里可以添加删除服务器存档的逻辑，但暂时跳过
+            // 用户选择不加载存档，删除服务器上的存档
+            try {
+              await authService.deleteSave('classic', widget.difficulty);
+              print('用户选择不加载，已删除服务器存档');
+            } catch (e) {
+              print('删除服务器存档失败: $e');
+            }
           }
         }
       }
@@ -184,13 +187,10 @@ class _PuzzlePageState extends State<PuzzlePage> {
       final pieces = await _generator.generatePuzzle(
           saveData['imageSource'], widget.difficulty);
       _targetImage = _generator.lastLoadedImage;
-
       // 初始化游戏服务但不立即开始
       await _gameService.initGameSafe(pieces, widget.difficulty);
-
       // 恢复拼图块状态
-      _restorePuzzleState(pieces, GameSave.fromJson(saveData));
-
+      _restorePuzzleState(pieces, saveData);
       // 恢复游戏状态
       _currentTime = saveData['elapsedSeconds'];
       _currentScore = saveData['currentScore'];
@@ -205,7 +205,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
       // 显示加载成功提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white, size: 20),
@@ -227,7 +227,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
       // 加载失败时显示错误提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white, size: 20),
@@ -247,41 +247,34 @@ class _PuzzlePageState extends State<PuzzlePage> {
   }
 
   // 恢复拼图块状态
-  void _restorePuzzleState(List<PuzzlePiece> pieces, GameSave gameSave) {
+  void _restorePuzzleState(
+      List<PuzzlePiece> pieces, Map<String, dynamic> saveData) {
     try {
-      // 创建新的可修改列表来替换当前状态
-      final newPlacedPieces = <PuzzlePiece?>[];
-      final newAvailablePieces = <PuzzlePiece>[];
-
       // 根据存档恢复已放置的拼图块
-      for (int i = 0; i < gameSave.placedPiecesIds.length; i++) {
-        final pieceId = gameSave.placedPiecesIds[i];
+      final placedPiecesIds = saveData['placedPiecesIds'] as List<dynamic>;
+
+      // 遍历所有已放置的拼图块位置
+      for (int position = 0; position < placedPiecesIds.length; position++) {
+        final pieceId = placedPiecesIds[position];
         if (pieceId != null) {
-          try {
-            final piece = pieces.firstWhere((p) => p.nodeId == pieceId);
-            newPlacedPieces.add(piece);
-          } catch (e) {
-            print('找不到拼图块ID: $pieceId');
-            newPlacedPieces.add(null);
+          // 找到对应的拼图块在可用列表中的索引
+          final pieceIndex = _gameService.availablePieces
+              .indexWhere((p) => p.nodeId == pieceId);
+          if (pieceIndex != -1) {
+            // 尝试放置拼图块到指定位置
+            final success = _gameService.placePiece(pieceIndex, position);
+            if (success) {
+              print('成功恢复拼图块: ID=$pieceId, 位置=$position');
+            } else {
+              print('无法放置拼图块: ID=$pieceId, 位置=$position');
+            }
+          } else {
+            print('找不到可用拼图块: ID=$pieceId');
           }
-        } else {
-          newPlacedPieces.add(null);
         }
       }
 
-      // 根据存档恢复可用拼图块
-      for (final pieceId in gameSave.availablePiecesIds) {
-        try {
-          final piece = pieces.firstWhere((p) => p.nodeId == pieceId);
-          newAvailablePieces.add(piece);
-        } catch (e) {
-          print('找不到可用拼图块ID: $pieceId');
-        }
-      }
-
-      // 使用反射或直接访问来替换列表（如果GameService提供了setter方法）
-      // 这里假设GameService有重新初始化的方法
-      _gameService.restoreGameStateSafe(newPlacedPieces, newAvailablePieces);
+      print('拼图状态恢复完成');
     } catch (e) {
       print('恢复拼图状态失败: $e');
       // 如果恢复失败，抛出异常让上层处理
@@ -314,8 +307,13 @@ class _PuzzlePageState extends State<PuzzlePage> {
   }
 
   void _showCompletionDialog() {
-    // 游戏完成，删除存档
-    GameSaveService.deleteSave('classic', widget.difficulty);
+    // 游戏完成，删除服务器存档
+    final authService = AuthService();
+    if (authService.isLoggedIn) {
+      authService
+          .deleteSave('classic', widget.difficulty)
+          .catchError((e) => print('删除服务器存档失败: $e'));
+    }
 
     showDialog(
       context: context,
@@ -514,23 +512,77 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
   @override
   void dispose() {
-    // 在页面销毁时保存游戏进度（同步方式，避免异步问题）
-    if (_gameService.status == GameStatus.inProgress) {
-      // 使用同步方式保存，避免dispose时的异步问题
-      _saveGameSync();
-    }
     _gameService.dispose();
     super.dispose();
   }
 
-  // 同步保存游戏（用于dispose时调用）
-  void _saveGameSync() {
+  // 新增：提交分数到服务器
+  Future<void> _submitScore(
+      int score, int timeInSeconds, int difficulty) async {
     try {
-      // 由于dispose时无法使用异步，这里记录需要保存的状态
-      // 实际保存在下次启动时进行
-      print('标记游戏需要保存: 模式=classic, 难度=${widget.difficulty}, 分数=$_currentScore');
+      await ScoreSubmissionHelper.submitGameScore(
+        context: context,
+        score: score,
+        timeInSeconds: timeInSeconds,
+        difficulty: _getDifficultyString(difficulty),
+      );
     } catch (e) {
-      print('标记保存状态失败: $e');
+      // 错误已经在ScoreSubmissionHelper中处理，这里不需要额外处理
+      print('分数提交失败: $e');
+    }
+  }
+
+  // 新增：将难度数字转换为字符串
+  String _getDifficultyString(int difficulty) {
+    switch (difficulty) {
+      case 1:
+        return 'easy';
+      case 2:
+        return 'medium';
+      case 3:
+        return 'hard';
+      default:
+        return 'easy';
+    }
+  }
+
+  // 新增：根据分数返回不同颜色
+  MaterialColor _getScoreColor() {
+    if (_currentScore >= 1200) {
+      return Colors.green; // 高分 - 绿色
+    } else if (_currentScore >= 800) {
+      return Colors.amber; // 中等分数 - 琥珀色
+    } else if (_currentScore >= 400) {
+      return Colors.orange; // 低分 - 橙色
+    } else {
+      return Colors.red; // 很低分 - 红色
+    }
+  }
+
+  // 新增：实时更新分数
+  void _updateRealtimeScore() {
+    if (_gameService.status == GameStatus.inProgress) {
+      // 实时分数计算：基础分数 - 时间惩罚 + 难度奖励
+      final int baseScore = 1000; // 基础分数
+      final int timePenalty = _currentTime * 2; // 每秒扣2分（比最终分数计算更温和）
+      final int difficultyBonus = widget.difficulty * 100; // 难度奖励
+
+      // 计算已放置的拼图块数量奖励
+      final int placedCount =
+          _gameService.placedPieces.where((piece) => piece != null).length;
+      final int placementBonus = (placedCount * 50); // 每放置一个块加50分
+
+      int realtimeScore =
+          baseScore - timePenalty + difficultyBonus + placementBonus;
+
+      // 确保分数不为负
+      if (realtimeScore < 0) {
+        realtimeScore = 0;
+      }
+
+      setState(() {
+        _currentScore = realtimeScore;
+      });
     }
   }
 
@@ -1231,75 +1283,5 @@ class _PuzzlePageState extends State<PuzzlePage> {
         ],
       ),
     );
-  }
-
-  // 新增：提交分数到服务器
-  Future<void> _submitScore(
-      int score, int timeInSeconds, int difficulty) async {
-    try {
-      await ScoreSubmissionHelper.submitGameScore(
-        context: context,
-        score: score,
-        timeInSeconds: timeInSeconds,
-        difficulty: _getDifficultyString(difficulty),
-      );
-    } catch (e) {
-      // 错误已经在ScoreSubmissionHelper中处理，这里不需要额外处理
-      print('分数提交失败: $e');
-    }
-  }
-
-  // 新增：将难度数字转换为字符串
-  String _getDifficultyString(int difficulty) {
-    switch (difficulty) {
-      case 1:
-        return 'easy';
-      case 2:
-        return 'medium';
-      case 3:
-        return 'hard';
-      default:
-        return 'easy';
-    }
-  }
-
-  // 新增：根据分数返回不同颜色
-  MaterialColor _getScoreColor() {
-    if (_currentScore >= 1200) {
-      return Colors.green; // 高分 - 绿色
-    } else if (_currentScore >= 800) {
-      return Colors.amber; // 中等分数 - 琥珀色
-    } else if (_currentScore >= 400) {
-      return Colors.orange; // 低分 - 橙色
-    } else {
-      return Colors.red; // 很低分 - 红色
-    }
-  }
-
-  // 新增：实时更新分数
-  void _updateRealtimeScore() {
-    if (_gameService.status == GameStatus.inProgress) {
-      // 实时分数计算：基础分数 - 时间惩罚 + 难度奖励
-      final int baseScore = 1000; // 基础分数
-      final int timePenalty = _currentTime * 2; // 每秒扣2分（比最终分数计算更温和）
-      final int difficultyBonus = widget.difficulty * 100; // 难度奖励
-
-      // 计算已放置的拼图块数量奖励
-      final int placedCount =
-          _gameService.placedPieces.where((piece) => piece != null).length;
-      final int placementBonus = (placedCount * 50); // 每放置一个块加50分
-
-      int realtimeScore =
-          baseScore - timePenalty + difficultyBonus + placementBonus;
-
-      // 确保分数不为负
-      if (realtimeScore < 0) {
-        realtimeScore = 0;
-      }
-
-      setState(() {
-        _currentScore = realtimeScore;
-      });
-    }
   }
 }
