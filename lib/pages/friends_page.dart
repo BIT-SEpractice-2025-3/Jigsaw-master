@@ -13,7 +13,8 @@ class FriendsPage extends StatefulWidget {
   State<FriendsPage> createState() => _FriendsPageState();
 }
 
-class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStateMixin {
+class _FriendsPageState extends State<FriendsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FriendService _friendService = FriendService();
   final SocketService _socketService = SocketService();
@@ -49,8 +50,11 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text('好友对战中心'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -60,12 +64,19 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          _buildFriendsList(),
-          _buildRequestsList(),
-          _buildAddFriendTab(),
+          // 背景装饰 - 拼图元素
+          _buildBackgroundPuzzleElements(context),
+          // 主要内容
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _buildFriendsList(),
+              _buildRequestsList(),
+              _buildAddFriendTab(),
+            ],
+          ),
         ],
       ),
     );
@@ -96,23 +107,32 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                   itemCount: friends.length,
                   itemBuilder: (context, index) {
                     final friend = friends[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: friend.statusColor.withOpacity(0.2),
-                        child: Text(friend.username[0].toUpperCase()),
+                    return Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      title: Text(friend.username),
-                      subtitle: Text(friend.status, style: TextStyle(color: friend.statusColor)),
-                      trailing: ElevatedButton.icon(
-                        icon: const Icon(Icons.gamepad_rounded, size: 16),
-                        label: const Text('邀请'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: friend.statusColor.withOpacity(0.2),
+                          child: Text(friend.username[0].toUpperCase()),
                         ),
-                        onPressed: friend.status == 'online'
-                            ? () => _showInviteDialog(friend)
-                            : null, // 如果不在线，按钮不可用
+                        title: Text(friend.username),
+                        subtitle: Text(friend.status,
+                            style: TextStyle(color: friend.statusColor)),
+                        trailing: ElevatedButton.icon(
+                          icon: const Icon(Icons.gamepad_rounded, size: 16),
+                          label: const Text('邀请'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: friend.status == 'online'
+                              ? () => _showInviteDialog(friend)
+                              : null, // 如果不在线，按钮不可用
+                        ),
                       ),
                     );
                   },
@@ -120,8 +140,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               );
             },
           );
-        }
-    );
+        });
   }
 
   // --- Tab 2: 好友请求列表 ---
@@ -147,21 +166,26 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                   itemBuilder: (context, index) {
                     final request = requests[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       child: ListTile(
-                        leading: CircleAvatar(child: Text(request.username[0].toUpperCase())),
+                        leading: CircleAvatar(
+                            child: Text(request.username[0].toUpperCase())),
                         title: Text(request.username),
                         subtitle: const Text('向你发送了好友请求'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.check_circle, color: Colors.green),
-                              onPressed: () => _respondToRequest(request.friendshipId, 'accept'),
+                              icon: const Icon(Icons.check_circle,
+                                  color: Colors.green),
+                              onPressed: () => _respondToRequest(
+                                  request.friendshipId, 'accept'),
                             ),
                             IconButton(
                               icon: const Icon(Icons.cancel, color: Colors.red),
-                              onPressed: () => _respondToRequest(request.friendshipId, 'decline'),
+                              onPressed: () => _respondToRequest(
+                                  request.friendshipId, 'decline'),
                             ),
                           ],
                         ),
@@ -172,8 +196,7 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               );
             },
           );
-        }
-    );
+        });
   }
 
   // --- Tab 3: 添加好友 ---
@@ -197,7 +220,8 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
                   if (query.length < 2) return;
                   _isLoading.value = true;
                   try {
-                    _searchResults.value = await _friendService.searchUsers(query);
+                    _searchResults.value =
+                        await _friendService.searchUsers(query);
                   } finally {
                     _isLoading.value = false;
                   }
@@ -210,11 +234,13 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
             child: ValueListenableBuilder<bool>(
               valueListenable: _isLoading,
               builder: (context, isLoading, child) {
-                if (isLoading) return const Center(child: CircularProgressIndicator());
+                if (isLoading)
+                  return const Center(child: CircularProgressIndicator());
                 return ValueListenableBuilder<List<SearchedUser>>(
                   valueListenable: _searchResults,
                   builder: (context, results, child) {
-                    if (results.isEmpty) return const Center(child: Text('输入关键词进行搜索'));
+                    if (results.isEmpty)
+                      return const Center(child: Text('输入关键词进行搜索'));
                     return ListView.builder(
                       itemCount: results.length,
                       itemBuilder: (context, index) {
@@ -235,12 +261,11 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
     );
   }
 
-  // --- 辅助方法 ---
-
   void _showInviteDialog(Friend friend) {
     showDialog(
       context: context,
-      builder: (dialogContext) { // 使用 dialogContext 避免歧义
+      builder: (dialogContext) {
+        // 使用 dialogContext 避免歧义
         return AlertDialog(
           title: Text('邀请 ${friend.username} 对战'),
           content: const Text('选择一个难度开始对战。\n图片将使用默认图片。'),
@@ -248,15 +273,18 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
           actions: <Widget>[
             // --- 修改部分开始 ---
             TextButton(
-              onPressed: () => _sendInvite(friend.id, 'easy'), // 修改 '1' 为 'easy'
+              onPressed: () =>
+                  _sendInvite(friend.id, 'easy'), // 修改 '1' 为 'easy'
               child: const Text('简单'),
             ),
             TextButton(
-              onPressed: () => _sendInvite(friend.id, 'medium'), // 修改 '2' 为 'medium'
+              onPressed: () =>
+                  _sendInvite(friend.id, 'medium'), // 修改 '2' 为 'medium'
               child: const Text('中等'),
             ),
             TextButton(
-              onPressed: () => _sendInvite(friend.id, 'hard'), // 修改 '3' 为 'hard'
+              onPressed: () =>
+                  _sendInvite(friend.id, 'hard'), // 修改 '3' 为 'hard'
               child: const Text('困难'),
             ),
           ],
@@ -271,7 +299,8 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       Navigator.of(context).pop(); // 关闭选择难度的对话框
     }
 
-    _socketService.sendInvite(friendId, difficulty, 'assets/images/default_puzzle.jpg');
+    _socketService.sendInvite(
+        friendId, difficulty, 'assets/images/default_puzzle.jpg');
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('邀请已发送！'), backgroundColor: Colors.green),
@@ -282,7 +311,9 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
     try {
       await _friendService.respondToFriendRequest(friendshipId, action);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(action == 'accept' ? '好友已添加' : '已拒绝请求'), backgroundColor: Colors.green),
+        SnackBar(
+            content: Text(action == 'accept' ? '好友已添加' : '已拒绝请求'),
+            backgroundColor: Colors.green),
       );
       _refreshAll();
     } catch (e) {
@@ -305,7 +336,8 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
         try {
           await _friendService.sendFriendRequest(user.id);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('好友请求已发送！'), backgroundColor: Colors.green),
+            const SnackBar(
+                content: Text('好友请求已发送！'), backgroundColor: Colors.green),
           );
           // 可选：刷新搜索结果以更新按钮状态
         } catch (e) {
@@ -316,4 +348,171 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
       },
     );
   }
+
+  // 构建背景拼图元素
+  Widget _buildBackgroundPuzzleElements(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+
+    return Stack(
+      children: [
+        // 背景渐变
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFF3F4F8),
+                Color(0xFFE8EAF6),
+                Color(0xFFF3F4F8),
+              ],
+            ),
+          ),
+        ),
+
+        // 左上角拼图元素
+        Positioned(
+          top: -30,
+          left: -30,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x306A5ACD),
+            size: 150,
+            rotation: 0.2,
+          ),
+        ),
+
+        // 右上角拼图元素
+        Positioned(
+          top: 50,
+          right: -40,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x30E91E63),
+            size: 120,
+            rotation: -0.3,
+          ),
+        ),
+
+        // 左下角拼图元素
+        Positioned(
+          bottom: 80,
+          left: -50,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x30FF9800),
+            size: 130,
+            rotation: 0.7,
+          ),
+        ),
+
+        // 右下角拼图元素
+        Positioned(
+          bottom: -40,
+          right: -30,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x304CAF50),
+            size: 160,
+            rotation: -0.5,
+          ),
+        ),
+
+        // 中央装饰拼图元素
+        Positioned(
+          top: screenSize.height * 0.3,
+          left: screenSize.width * 0.2,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x206A5ACD),
+            size: 70,
+            rotation: 0.1,
+          ),
+        ),
+
+        Positioned(
+          bottom: screenSize.height * 0.3,
+          right: screenSize.width * 0.2,
+          child: _buildPuzzleDecoration(
+            color: const Color(0x20FF9800),
+            size: 60,
+            rotation: -0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 构建拼图装饰元素
+  Widget _buildPuzzleDecoration({
+    required Color color,
+    required double size,
+    double rotation = 0.0,
+  }) {
+    return Transform.rotate(
+      angle: rotation,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: CustomPaint(
+          painter: _PuzzlePiecePainter(color: color),
+        ),
+      ),
+    );
+  }
+}
+
+class _PuzzlePiecePainter extends CustomPainter {
+  final Color color;
+
+  _PuzzlePiecePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // 绘制拼图凹凸形状
+    _drawPuzzleTab(canvas, center, radius, 0); // 上
+    _drawPuzzleTab(canvas, center, radius, 1); // 右
+    _drawPuzzleTab(canvas, center, radius, 2); // 下
+    _drawPuzzleTab(canvas, center, radius, 3); // 左
+  }
+
+  void _drawPuzzleTab(Canvas canvas, Offset center, double radius, int side) {
+    final path = Path();
+    final tabWidth = radius / 2;
+
+    switch (side) {
+      case 0: // 上
+        path.moveTo(center.dx - tabWidth, center.dy - radius);
+        path.quadraticBezierTo(center.dx, center.dy - radius - tabWidth,
+            center.dx + tabWidth, center.dy - radius);
+        break;
+      case 1: // 右
+        path.moveTo(center.dx + radius, center.dy - tabWidth);
+        path.quadraticBezierTo(center.dx + radius + tabWidth, center.dy,
+            center.dx + radius, center.dy + tabWidth);
+        break;
+      case 2: // 下
+        path.moveTo(center.dx + tabWidth, center.dy + radius);
+        path.quadraticBezierTo(center.dx, center.dy + radius + tabWidth,
+            center.dx - tabWidth, center.dy + radius);
+        break;
+      case 3: // 左
+        path.moveTo(center.dx - radius, center.dy + tabWidth);
+        path.quadraticBezierTo(center.dx - radius - tabWidth, center.dy,
+            center.dx - radius, center.dy - tabWidth);
+        break;
+    }
+
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.white.withOpacity(0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
