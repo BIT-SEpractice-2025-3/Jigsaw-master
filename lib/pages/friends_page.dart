@@ -23,7 +23,6 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
   ValueNotifier<int> requestsListVersion = ValueNotifier(0);
 
   late StreamSubscription _friendStatusSubscription;
-
   @override
   void initState() {
     super.initState();
@@ -260,16 +259,6 @@ class _FriendsPageState extends State<FriendsPage> with SingleTickerProviderStat
               onPressed: () => _sendInvite(friend.id, 'hard'), // 修改 '3' 为 'hard'
               child: const Text('困难'),
             ),
-            // ▼▼▼ 新增大师难度按钮 ▼▼▼
-            ElevatedButton(
-              onPressed: () => _sendInvite(friend.id, 'master'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple, // 大师模式使用特殊颜色
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('大师'),
-            ),
-            // --- 修改部分结束 ---
           ],
         );
       },

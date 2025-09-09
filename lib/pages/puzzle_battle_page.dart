@@ -1,5 +1,3 @@
-// lib/pages/puzzle_battle_page.dart
-
 import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -11,7 +9,6 @@ import '../services/puzzle_generate_service.dart';
 import '../models/puzzle_piece.dart';
 import '../services/auth_service.dart';
 
-// 经典模式下方块的高亮提示画笔
 class PuzzlePieceHighlightPainter extends CustomPainter {
   final ui.Image image;
   final double scale;
@@ -61,13 +58,11 @@ class PuzzleBattlePage extends StatefulWidget {
 }
 
 class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
-  // --- 核心服务 ---
   final SocketService _socketService = SocketService();
   final AuthService _authService = AuthService();
   late final PuzzleGameService _gameService;
   late final PuzzleGenerateService _generator;
 
-  // --- 状态变量 ---
   late Future<void> _initFuture;
   ui.Image? _targetImage;
   double _opponentProgress = 0.0;
@@ -75,19 +70,11 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
   bool _isMyGameFinished = false;
   final Stopwatch _stopwatch = Stopwatch();
 
-  // --- UI & 拖拽交互状态 ---
   double _scale = 1.0;
   final GlobalKey _puzzleAreaKey = GlobalKey();
-  PuzzlePiece? _currentClassicDraggingPiece; // 【修正】变量名修正
+  PuzzlePiece? _currentClassicDraggingPiece;
   bool _shouldHighlightTarget = false;
 
-  // 大师模式交互状态
-  final TransformationController _transformationController =
-      TransformationController();
-  int? _draggedPieceId;
-  Offset _lastFocalPoint = Offset.zero;
-
-  // --- Stream Subscriptions ---
   late StreamSubscription _opponentProgressSubscription;
   late StreamSubscription _matchOverSubscription;
   StreamSubscription? _gameStatusSubscription;
@@ -99,14 +86,7 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     _gameService = PuzzleGameService();
     _generator = PuzzleGenerateService();
 
-    if (widget.match.difficulty == 'master') {
-      _initFuture = _initializeMasterBattle();
-      _progressSubscription =
-          _gameService.masterPiecesStream.listen((_) => _onMyProgressUpdated());
-    } else {
-      _initFuture = _initializeClassicBattle();
-      // _progressSubscription = _gameService.placedPiecesStream.listen((_) => _onMyProgressUpdated());
-    }
+    _initFuture = _initializeClassicBattle();
 
     _opponentProgressSubscription =
         _socketService.onOpponentProgress.listen((progress) {
@@ -127,13 +107,10 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     _matchOverSubscription.cancel();
     _gameStatusSubscription?.cancel();
     _progressSubscription?.cancel();
-    _transformationController.dispose();
     _gameService.dispose();
     _stopwatch.stop();
     super.dispose();
   }
-
-  // --- 初始化逻辑 ---
 
   Future<void> _initializeClassicBattle() async {
     try {
@@ -144,7 +121,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
           await _generator.generatePuzzle(widget.match.imageSource, difficulty);
       _targetImage = _generator.lastLoadedImage;
 
-      // ▼▼▼ 【修正】调用正确的方法名 initGame ▼▼▼
       await _gameService.initGame(pieces, difficulty);
 
       _gameService.startGame();
@@ -155,53 +131,14 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     }
   }
 
-  Future<void> _initializeMasterBattle() async {
-    try {
-      setState(() => _statusMessage = "正在生成大师拼图...");
-      final pieces =
-          await _generator.generatePuzzle(widget.match.imageSource, 3);
-      _targetImage = _generator.lastLoadedImage;
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final RenderBox? board =
-            _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
-        if (board != null) {
-          _gameService.initMasterGame(pieces, board.size);
-          _gameService.startGame();
-          _stopwatch.start();
-          if (mounted) setState(() => _statusMessage = "大师对战开始！");
-        }
-      });
-    } catch (e) {
-      if (mounted) setState(() => _statusMessage = "游戏初始化失败: $e");
-    }
-  }
-
-  // --- 进度与完成逻辑 ---
-
   void _onMyProgressUpdated() {
-    // if (_isMyGameFinished) return;
     double myProgress = 0.0;
 
-    if (widget.match.difficulty == 'master') {
-      if (_gameService.masterPieces.isNotEmpty) {
-        final groupCounts = <int, int>{};
-        for (var p in _gameService.masterPieces) {
-          groupCounts[p.group] = (groupCounts[p.group] ?? 0) + 1;
-        }
-        final maxGroupSize = groupCounts.values
-            .fold(0, (max, current) => current > max ? current : max);
-        myProgress = maxGroupSize / _gameService.masterPieces.length;
-      }
-    } else {
-      // ▼▼▼ 【修正】使用正确的列表长度获取总块数 ▼▼▼
-      final totalPieces = _gameService.placedPieces.length;
-      if (totalPieces > 0) {
-        final placedCount =
-            _gameService.placedPieces.where((p) => p != null).length;
-        myProgress = placedCount / totalPieces;
-      }
+    final totalPieces = _gameService.placedPieces.length;
+    if (totalPieces > 0) {
+      final placedCount =
+          _gameService.placedPieces.where((p) => p != null).length;
+      myProgress = placedCount / totalPieces;
     }
     _socketService.updateProgress(widget.match.id, myProgress * 100);
   }
@@ -257,8 +194,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
             ));
   }
 
-  // --- UI 构建方法 ---
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -267,7 +202,7 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
         future: _initFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting ||
-              (_targetImage == null && widget.match.difficulty != 'master')) {
+              _targetImage == null) {
             return Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
               const CircularProgressIndicator(),
@@ -288,9 +223,7 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
             children: [
               _buildOpponentProgress(),
               Expanded(
-                child: widget.match.difficulty == 'master'
-                    ? _buildMasterModeUI()
-                    : _buildClassicModeUI(),
+                child: _buildClassicModeUI(),
               ),
             ],
           );
@@ -321,7 +254,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     );
   }
 
-  // --- 经典模式 UI ---
   Widget _buildClassicModeUI() {
     final size = MediaQuery.of(context).size;
     return Column(
@@ -356,8 +288,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
         ),
         child: Stack(
           children: [
-            // ▼▼▼ BUG修复：移除 StreamBuilder，改用与单人模式相同的直接构建方式 ▼▼▼
-            // 这样可以确保每次 setState 都能正确刷新UI
             ...List.generate(_gameService.placedPieces.length, (i) {
               if (_gameService.placedPieces[i] == null) {
                 return const SizedBox.shrink();
@@ -373,8 +303,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
                 ),
               );
             }),
-            // ▲▲▲ 修复结束 ▲▲▲
-
             if (_shouldHighlightTarget && _currentClassicDraggingPiece != null)
               Positioned(
                 left: _currentClassicDraggingPiece!.position.dx * _scale -
@@ -396,7 +324,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
                   ),
                 ),
               ),
-
             Positioned.fill(
               child: DragTarget<int>(
                 builder: (context, _, __) =>
@@ -414,7 +341,6 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
                       _onMyProgressUpdated();
                     }
                   }
-                  // ▼▼▼ 关键：这里的 setState 会触发整个 build 方法，从而让上面的 for 循环重新绘制 ▼▼▼
                   setState(() {
                     _currentClassicDraggingPiece = null;
                     _shouldHighlightTarget = false;
@@ -499,107 +425,5 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
       child:
           SizedBox(width: 50, height: 50, child: RawImage(image: piece.image)),
     );
-  }
-
-  // --- 大师模式 UI ---
-  Widget _buildMasterModeUI() {
-    return Container(
-      key: _puzzleAreaKey,
-      color: Colors.blueGrey.shade900,
-      child: GestureDetector(
-        onScaleStart: _onScaleStart,
-        onScaleUpdate: _onScaleUpdate,
-        onScaleEnd: _onScaleEnd,
-        child: InteractiveViewer(
-          transformationController: _transformationController,
-          minScale: 0.1,
-          maxScale: 4.0,
-          constrained: false,
-          boundaryMargin: const EdgeInsets.all(double.infinity),
-          child: StreamBuilder<List<MasterPieceState>>(
-            stream: _gameService.masterPiecesStream,
-            initialData: _gameService.masterPieces,
-            builder: (context, snapshot) {
-              final pieces = snapshot.data ?? [];
-              final RenderBox? board = _puzzleAreaKey.currentContext
-                  ?.findRenderObject() as RenderBox?;
-              final boardSize = board?.size ?? const Size(1000, 1000);
-              return SizedBox(
-                width: boardSize.width,
-                height: boardSize.height,
-                child: Stack(
-                  children: pieces.map((state) {
-                    return Positioned(
-                      left: state.position.dx,
-                      top: state.position.dy,
-                      child: Transform.rotate(
-                        angle: state.rotation,
-                        child: Transform.scale(
-                          scale: state.scale,
-                          child: RawImage(
-                            image: state.piece.image,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- 大师模式手势处理 ---
-  void _onScaleStart(ScaleStartDetails details) {
-    _lastFocalPoint = details.focalPoint;
-    final tapPosition =
-        _transformationController.toScene(details.localFocalPoint);
-    int? topPieceId;
-    for (var state in _gameService.masterPieces.reversed) {
-      final pieceRect = Rect.fromCenter(
-          center: state.position,
-          width: state.piece.pieceSize * state.scale,
-          height: state.piece.pieceSize * state.scale);
-      if (pieceRect.contains(tapPosition)) {
-        topPieceId = state.piece.nodeId;
-        break;
-      }
-    }
-    _draggedPieceId = topPieceId;
-  }
-
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (_draggedPieceId == null) return;
-    final focalPoint = details.focalPoint;
-    final focalPointDelta = focalPoint - _lastFocalPoint;
-    _lastFocalPoint = focalPoint;
-    final draggedState = _gameService.masterPieces
-        .firstWhere((p) => p.piece.nodeId == _draggedPieceId);
-    final groupToMove = draggedState.group;
-    for (var state in _gameService.masterPieces) {
-      if (state.group == groupToMove) {
-        state.position += focalPointDelta /
-            _transformationController.value.getMaxScaleOnAxis();
-        if (details.scale != 1.0 || details.rotation != 0.0) {
-          state.rotation += details.rotation;
-          state.scale *= details.scale;
-        }
-      }
-    }
-    _gameService.updateMasterPieceTransform(draggedState.piece.nodeId,
-        draggedState.position, draggedState.scale, draggedState.rotation);
-    _gameService.checkForSnapping(_draggedPieceId!);
-  }
-
-  void _onScaleEnd(ScaleEndDetails details) {
-    if (_draggedPieceId != null) {
-      if (_gameService.snapTarget != null) {
-        _gameService.snapPieces();
-      }
-      _draggedPieceId = null;
-    }
   }
 }
