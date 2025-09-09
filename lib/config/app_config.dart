@@ -6,5 +6,5 @@ class AppConfig {
 
   /// 你的后端服务器的IP地址和端口号
   /// 【重要】这是你唯一需要修改的地方！
-  static const String serverUrl = 'http://10.194.165.37:5000';
+  static const String serverUrl = 'http://localhost:5000';
 }

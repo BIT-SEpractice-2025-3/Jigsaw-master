@@ -52,7 +52,6 @@ class PuzzlePieceHighlightPainter extends CustomPainter {
   bool shouldRepaint(covariant PuzzlePieceHighlightPainter oldDelegate) => true;
 }
 
-
 class PuzzleBattlePage extends StatefulWidget {
   final Match match;
   const PuzzleBattlePage({super.key, required this.match});
@@ -83,7 +82,8 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
   bool _shouldHighlightTarget = false;
 
   // 大师模式交互状态
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
   int? _draggedPieceId;
   Offset _lastFocalPoint = Offset.zero;
 
@@ -101,16 +101,19 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
 
     if (widget.match.difficulty == 'master') {
       _initFuture = _initializeMasterBattle();
-      _progressSubscription = _gameService.masterPiecesStream.listen((_) => _onMyProgressUpdated());
+      _progressSubscription =
+          _gameService.masterPiecesStream.listen((_) => _onMyProgressUpdated());
     } else {
       _initFuture = _initializeClassicBattle();
       // _progressSubscription = _gameService.placedPiecesStream.listen((_) => _onMyProgressUpdated());
     }
 
-    _opponentProgressSubscription = _socketService.onOpponentProgress.listen((progress) {
+    _opponentProgressSubscription =
+        _socketService.onOpponentProgress.listen((progress) {
       if (mounted) setState(() => _opponentProgress = progress / 100.0);
     });
-    _matchOverSubscription = _socketService.onMatchOver.listen(_showGameResultDialog);
+    _matchOverSubscription =
+        _socketService.onMatchOver.listen(_showGameResultDialog);
     _gameStatusSubscription = _gameService.statusStream.listen((status) {
       if (status == GameStatus.completed && !_isMyGameFinished) {
         _onMyGameCompleted();
@@ -137,7 +140,8 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
       setState(() => _statusMessage = "正在生成经典拼图...");
       final difficultyMap = {'easy': 1, 'medium': 2, 'hard': 3};
       final difficulty = difficultyMap[widget.match.difficulty] ?? 1;
-      final pieces = await _generator.generatePuzzle(widget.match.imageSource, difficulty);
+      final pieces =
+          await _generator.generatePuzzle(widget.match.imageSource, difficulty);
       _targetImage = _generator.lastLoadedImage;
 
       // ▼▼▼ 【修正】调用正确的方法名 initGame ▼▼▼
@@ -145,7 +149,7 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
 
       _gameService.startGame();
       _stopwatch.start();
-      if(mounted) setState(() => _statusMessage = "对战开始！");
+      if (mounted) setState(() => _statusMessage = "对战开始！");
     } catch (e) {
       if (mounted) setState(() => _statusMessage = "游戏初始化失败: $e");
     }
@@ -154,17 +158,19 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
   Future<void> _initializeMasterBattle() async {
     try {
       setState(() => _statusMessage = "正在生成大师拼图...");
-      final pieces = await _generator.generatePuzzle(widget.match.imageSource, 3);
+      final pieces =
+          await _generator.generatePuzzle(widget.match.imageSource, 3);
       _targetImage = _generator.lastLoadedImage;
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final RenderBox? board = _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
+        final RenderBox? board =
+            _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
         if (board != null) {
           _gameService.initMasterGame(pieces, board.size);
           _gameService.startGame();
           _stopwatch.start();
-          if(mounted) setState(() => _statusMessage = "大师对战开始！");
+          if (mounted) setState(() => _statusMessage = "大师对战开始！");
         }
       });
     } catch (e) {
@@ -184,14 +190,16 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
         for (var p in _gameService.masterPieces) {
           groupCounts[p.group] = (groupCounts[p.group] ?? 0) + 1;
         }
-        final maxGroupSize = groupCounts.values.fold(0, (max, current) => current > max ? current : max);
+        final maxGroupSize = groupCounts.values
+            .fold(0, (max, current) => current > max ? current : max);
         myProgress = maxGroupSize / _gameService.masterPieces.length;
       }
     } else {
       // ▼▼▼ 【修正】使用正确的列表长度获取总块数 ▼▼▼
       final totalPieces = _gameService.placedPieces.length;
       if (totalPieces > 0) {
-        final placedCount = _gameService.placedPieces.where((p) => p != null).length;
+        final placedCount =
+            _gameService.placedPieces.where((p) => p != null).length;
         myProgress = placedCount / totalPieces;
       }
     }
@@ -203,7 +211,10 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     _stopwatch.stop();
     final elapsedMs = _stopwatch.elapsedMilliseconds;
     if (mounted) {
-      setState(() { _statusMessage = "你已完成！用时: ${(elapsedMs / 1000).toStringAsFixed(2)}s. 等待对手..."; });
+      setState(() {
+        _statusMessage =
+            "你已完成！用时: ${(elapsedMs / 1000).toStringAsFixed(2)}s. 等待对手...";
+      });
     }
     _socketService.playerFinished(widget.match.id, elapsedMs);
   }
@@ -216,26 +227,34 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     String title;
     Color titleColor;
     if (myId == null) {
-      title = "比赛结束"; titleColor = Colors.grey;
+      title = "比赛结束";
+      titleColor = Colors.grey;
     } else if (winnerId == null) {
-      title = "平局！"; titleColor = Colors.blue;
+      title = "平局！";
+      titleColor = Colors.blue;
     } else if (winnerId == myId) {
-      title = "🎉 你赢了！"; titleColor = Colors.green;
+      title = "🎉 你赢了！";
+      titleColor = Colors.green;
     } else {
-      title = "再接再厉！"; titleColor = Colors.orange;
+      title = "再接再厉！";
+      titleColor = Colors.orange;
     }
-    showDialog( context: context, barrierDismissible: false,
+    showDialog(
+        context: context,
+        barrierDismissible: false,
         builder: (dialogContext) => AlertDialog(
-          title: Text(title, style: TextStyle(color: titleColor)),
-          content: const Text("比赛已结束，返回大厅查看结果。"),
-          actions: [
-            TextButton(
-              onPressed: () { Navigator.of(dialogContext).pop(); Navigator.of(context).pop(); },
-              child: const Text("返回"),
-            )
-          ],
-        )
-    );
+              title: Text(title, style: TextStyle(color: titleColor)),
+              content: const Text("比赛已结束，返回大厅查看结果。"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text("返回"),
+                )
+              ],
+            ));
   }
 
   // --- UI 构建方法 ---
@@ -247,11 +266,22 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
       body: FutureBuilder<void>(
         future: _initFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting || (_targetImage == null && widget.match.difficulty != 'master')) {
-            return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const CircularProgressIndicator(), const SizedBox(height: 16), Text(_statusMessage)]));
+          if (snapshot.connectionState == ConnectionState.waiting ||
+              (_targetImage == null && widget.match.difficulty != 'master')) {
+            return Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(_statusMessage)
+            ]));
           }
           if (snapshot.hasError) {
-            return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.error, color: Colors.red), const SizedBox(height: 16), Text('发生错误: ${snapshot.error}')]));
+            return Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.error, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('发生错误: ${snapshot.error}')
+            ]));
           }
 
           return Column(
@@ -275,7 +305,9 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("对手进度", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
+          const Text("对手进度",
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.redAccent)),
           const SizedBox(height: 4),
           LinearProgressIndicator(
             value: _opponentProgress,
@@ -345,12 +377,16 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
 
             if (_shouldHighlightTarget && _currentClassicDraggingPiece != null)
               Positioned(
-                left: _currentClassicDraggingPiece!.position.dx * _scale - (_currentClassicDraggingPiece!.pivot.dx * _scale),
-                top: _currentClassicDraggingPiece!.position.dy * _scale - (_currentClassicDraggingPiece!.pivot.dy * _scale),
+                left: _currentClassicDraggingPiece!.position.dx * _scale -
+                    (_currentClassicDraggingPiece!.pivot.dx * _scale),
+                top: _currentClassicDraggingPiece!.position.dy * _scale -
+                    (_currentClassicDraggingPiece!.pivot.dy * _scale),
                 child: CustomPaint(
                   size: Size(
-                    _currentClassicDraggingPiece!.image.width.toDouble() * _scale,
-                    _currentClassicDraggingPiece!.image.height.toDouble() * _scale,
+                    _currentClassicDraggingPiece!.image.width.toDouble() *
+                        _scale,
+                    _currentClassicDraggingPiece!.image.height.toDouble() *
+                        _scale,
                   ),
                   painter: PuzzlePieceHighlightPainter(
                     image: _currentClassicDraggingPiece!.image,
@@ -363,13 +399,17 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
 
             Positioned.fill(
               child: DragTarget<int>(
-                builder: (context, _, __) => Container(color: Colors.transparent),
+                builder: (context, _, __) =>
+                    Container(color: Colors.transparent),
                 onWillAccept: (nodeId) => nodeId != null && !_isMyGameFinished,
                 onAccept: (nodeId) {
-                  final pieceIndex = _gameService.availablePieces.indexWhere((p) => p.nodeId == nodeId);
-                  if (pieceIndex != -1 && _currentClassicDraggingPiece != null) {
+                  final pieceIndex = _gameService.availablePieces
+                      .indexWhere((p) => p.nodeId == nodeId);
+                  if (pieceIndex != -1 &&
+                      _currentClassicDraggingPiece != null) {
                     final targetPosition = _currentClassicDraggingPiece!.nodeId;
-                    if (_shouldHighlightTarget && _gameService.placedPieces[targetPosition] == null) {
+                    if (_shouldHighlightTarget &&
+                        _gameService.placedPieces[targetPosition] == null) {
                       _gameService.placePiece(pieceIndex, targetPosition);
                       _onMyProgressUpdated();
                     }
@@ -422,11 +462,13 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
       data: piece.nodeId,
       feedback: Transform.scale(
         scale: 1.1,
-        child: SizedBox(width: 50, height: 50, child: RawImage(image: piece.image)),
+        child: SizedBox(
+            width: 50, height: 50, child: RawImage(image: piece.image)),
       ),
       childWhenDragging: Opacity(
         opacity: 0.3,
-        child: SizedBox(width: 50, height: 50, child: RawImage(image: piece.image)),
+        child: SizedBox(
+            width: 50, height: 50, child: RawImage(image: piece.image)),
       ),
       onDragStarted: () => setState(() {
         _currentClassicDraggingPiece = piece;
@@ -434,11 +476,16 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
       }),
       onDragUpdate: (details) {
         if (_currentClassicDraggingPiece == null) return;
-        final RenderBox? puzzleAreaBox = _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
+        final RenderBox? puzzleAreaBox =
+            _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
         if (puzzleAreaBox == null) return;
-        final localPosition = puzzleAreaBox.globalToLocal(details.globalPosition);
-        final targetCenter = Offset(_currentClassicDraggingPiece!.position.dx * _scale, _currentClassicDraggingPiece!.position.dy * _scale);
-        final tolerance = (_currentClassicDraggingPiece!.image.width * _scale) / 2;
+        final localPosition =
+            puzzleAreaBox.globalToLocal(details.globalPosition);
+        final targetCenter = Offset(
+            _currentClassicDraggingPiece!.position.dx * _scale,
+            _currentClassicDraggingPiece!.position.dy * _scale);
+        final tolerance =
+            (_currentClassicDraggingPiece!.image.width * _scale) / 2;
         final distance = (localPosition - targetCenter).distance;
         final shouldBeHighlighted = distance < tolerance;
         if (shouldBeHighlighted != _shouldHighlightTarget) {
@@ -449,10 +496,10 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
         _currentClassicDraggingPiece = null;
         _shouldHighlightTarget = false;
       }),
-      child: SizedBox(width: 50, height: 50, child: RawImage(image: piece.image)),
+      child:
+          SizedBox(width: 50, height: 50, child: RawImage(image: piece.image)),
     );
   }
-
 
   // --- 大师模式 UI ---
   Widget _buildMasterModeUI() {
@@ -474,7 +521,9 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
             initialData: _gameService.masterPieces,
             builder: (context, snapshot) {
               final pieces = snapshot.data ?? [];
-              final boardSize = _puzzleAreaKey.currentContext?.size ?? const Size(1000, 1000);
+              final RenderBox? board = _puzzleAreaKey.currentContext
+                  ?.findRenderObject() as RenderBox?;
+              final boardSize = board?.size ?? const Size(1000, 1000);
               return SizedBox(
                 width: boardSize.width,
                 height: boardSize.height,
@@ -506,10 +555,14 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
   // --- 大师模式手势处理 ---
   void _onScaleStart(ScaleStartDetails details) {
     _lastFocalPoint = details.focalPoint;
-    final tapPosition = _transformationController.toScene(details.localFocalPoint);
+    final tapPosition =
+        _transformationController.toScene(details.localFocalPoint);
     int? topPieceId;
     for (var state in _gameService.masterPieces.reversed) {
-      final pieceRect = Rect.fromCenter(center: state.position, width: state.piece.pieceSize * state.scale, height: state.piece.pieceSize * state.scale);
+      final pieceRect = Rect.fromCenter(
+          center: state.position,
+          width: state.piece.pieceSize * state.scale,
+          height: state.piece.pieceSize * state.scale);
       if (pieceRect.contains(tapPosition)) {
         topPieceId = state.piece.nodeId;
         break;
@@ -523,18 +576,21 @@ class _PuzzleBattlePageState extends State<PuzzleBattlePage> {
     final focalPoint = details.focalPoint;
     final focalPointDelta = focalPoint - _lastFocalPoint;
     _lastFocalPoint = focalPoint;
-    final draggedState = _gameService.masterPieces.firstWhere((p) => p.piece.nodeId == _draggedPieceId);
+    final draggedState = _gameService.masterPieces
+        .firstWhere((p) => p.piece.nodeId == _draggedPieceId);
     final groupToMove = draggedState.group;
     for (var state in _gameService.masterPieces) {
       if (state.group == groupToMove) {
-        state.position += focalPointDelta / _transformationController.value.getMaxScaleOnAxis();
+        state.position += focalPointDelta /
+            _transformationController.value.getMaxScaleOnAxis();
         if (details.scale != 1.0 || details.rotation != 0.0) {
           state.rotation += details.rotation;
           state.scale *= details.scale;
         }
       }
     }
-    _gameService.updateMasterPieceTransform(draggedState.piece.nodeId, draggedState.position, draggedState.scale, draggedState.rotation);
+    _gameService.updateMasterPieceTransform(draggedState.piece.nodeId,
+        draggedState.position, draggedState.scale, draggedState.rotation);
     _gameService.checkForSnapping(_draggedPieceId!);
   }
 
