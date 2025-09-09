@@ -22,9 +22,9 @@ socketio = SocketIO(app, cors_allowed_origins="*") # 允许SocketIO跨域
 # 数据库配置
 DB_CONFIG = {
     'host': '127.0.0.1',
-    'port': 3306,
-    'user': 'root',
-    'password': '123dsk',
+    'port': 29871,
+    'user': 'dev_user',
+    'password': 'devLhx050918@',
     'database': 'jigsaw',
     'charset': 'utf8mb4'
 }
@@ -650,6 +650,153 @@ def get_profile():
 
     except Exception as e:
         return jsonify({'error': f'获取用户资料失败: {str(e)}'}), 500
+
+@app.route('/api/user/achievements', methods=['GET'])
+@token_required
+def get_user_achievements():
+    """获取用户成就完成情况"""
+    try:
+        user_id = request.user['user_id']
+
+        # 获取用户已完成的成就
+        completed_achievements = execute_query(
+            "SELECT achievement_id, completed_at FROM user_achievements WHERE user_id = %s",
+            (user_id,),
+            fetch='all'
+        )
+
+        # 获取用户统计数据用于判断成就完成情况
+        user_stats = execute_query(
+            """
+            SELECT 
+                -- 基础统计
+                COUNT(*) as total_games,
+                IFNULL(MAX(score), 0) as best_score,
+                IFNULL(SUM(score), 0) as total_score,
+                IFNULL(AVG(score), 0) as avg_score,
+                IFNULL(MIN(time_taken), 0) as best_time,
+                IFNULL(MAX(time_taken), 0) as longest_time,
+                IFNULL(AVG(time_taken), 0) as avg_time,
+                
+                -- 难度统计
+                COUNT(CASE WHEN difficulty = 'easy' THEN 1 END) as easy_completed,
+                COUNT(CASE WHEN difficulty = 'medium' THEN 1 END) as medium_completed,
+                COUNT(CASE WHEN difficulty = 'hard' THEN 1 END) as hard_completed,
+                COUNT(CASE WHEN difficulty = 'master' THEN 1 END) as master_completed,
+                
+                -- 时间相关统计
+                COUNT(CASE WHEN time_taken <= 15 THEN 1 END) as games_under_15s,
+                COUNT(CASE WHEN time_taken <= 30 THEN 1 END) as games_under_30s,
+                COUNT(CASE WHEN time_taken <= 60 THEN 1 END) as games_under_60s,
+                COUNT(CASE WHEN time_taken >= 300 THEN 1 END) as games_over_5min,
+                COUNT(CASE WHEN time_taken >= 600 THEN 1 END) as games_over_10min,
+                
+                -- 特定条件组合统计
+                COUNT(CASE WHEN difficulty = 'easy' AND time_taken <= 30 THEN 1 END) as easy_under_30s,
+                COUNT(CASE WHEN difficulty = 'easy' AND time_taken <= 15 THEN 1 END) as easy_under_15s,
+                COUNT(CASE WHEN difficulty = 'medium' AND time_taken <= 60 THEN 1 END) as medium_under_60s,
+                COUNT(CASE WHEN difficulty = 'hard' AND time_taken <= 120 THEN 1 END) as hard_under_120s,
+                
+                -- 分数相关统计
+                COUNT(CASE WHEN score >= 1000 THEN 1 END) as high_score_games,
+                COUNT(CASE WHEN score >= 5000 THEN 1 END) as very_high_score_games,
+                COUNT(CASE WHEN score >= 10000 THEN 1 END) as ultra_high_score_games,
+                
+                -- 连续性和频率统计 (可以根据需要添加)
+                MIN(created_at) as first_game_date,
+                MAX(created_at) as last_game_date
+            FROM scores 
+            WHERE user_id = %s
+            """,
+            (user_id,),
+            fetch='one'
+        )
+        
+        # 添加社交相关统计（需要matches表）
+        social_stats = execute_query(
+            """
+            SELECT 
+                COUNT(DISTINCT CASE WHEN challenger_id = %s THEN opponent_id ELSE challenger_id END) as unique_opponents,
+                COUNT(CASE WHEN winner_id = %s THEN 1 END) as matches_won,
+                COUNT(*) as total_matches
+            FROM matches 
+            WHERE (challenger_id = %s OR opponent_id = %s) AND status = 'completed'
+            """,
+            (user_id, user_id, user_id, user_id),
+            fetch='one'
+        )
+        
+        # 合并统计数据
+        if user_stats and social_stats:
+            user_stats.update(social_stats)
+        elif social_stats:
+            user_stats = social_stats
+
+        # 转换结果为便于前端使用的格式
+        completed_list = [
+            {
+                'achievement_id': ach['achievement_id'],
+                'completed_at': ach['completed_at'].isoformat() if ach['completed_at'] else None
+            }
+            for ach in (completed_achievements or [])
+        ]
+
+        return jsonify({
+            'completed_achievements': completed_list,
+            'user_stats': user_stats or {
+                'total_games': 0,
+                'best_score': 0,
+                'total_score': 0,
+                'best_time': 0,
+                'speed_easy_count': 0,
+                'hard_completed': 0,
+                'lightning_count': 0,
+                'marathon_count': 0
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'获取用户成就失败: {str(e)}'}), 500
+
+@app.route('/api/user/achievements', methods=['POST'])
+@token_required
+def unlock_achievement():
+    """解锁用户成就"""
+    try:
+        data = request.get_json()
+        achievement_id = data.get('achievement_id')
+        
+        if not achievement_id:
+            return jsonify({'error': '成就ID不能为空'}), 400
+
+        user_id = request.user['user_id']
+
+        # 检查成就是否已经解锁
+        existing = execute_query(
+            "SELECT id FROM user_achievements WHERE user_id = %s AND achievement_id = %s",
+            (user_id, achievement_id),
+            fetch='one'
+        )
+
+        if existing:
+            return jsonify({'error': '成就已经解锁'}), 409
+
+        # 解锁成就
+        result = execute_query(
+            "INSERT INTO user_achievements (user_id, achievement_id) VALUES (%s, %s)",
+            (user_id, achievement_id)
+        )
+
+        if result:
+            return jsonify({
+                'message': '成就解锁成功',
+                'achievement_id': achievement_id
+            }), 201
+        else:
+            return jsonify({'error': '成就解锁失败'}), 500
+
+    except Exception as e:
+        return jsonify({'error': f'解锁成就失败: {str(e)}'}), 500
 
 
 @app.route('/api/users/search', methods=['GET'])
