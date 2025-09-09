@@ -653,6 +653,59 @@ def get_profile():
         return jsonify({'error': f'获取用户资料失败: {str(e)}'}), 500
 
 
+@app.route('/api/matches/history', methods=['GET'])
+@token_required
+def get_match_history():
+    """获取用户的对战历史记录"""
+    try:
+        user_id = request.user['user_id']
+
+        # 使用 UNION ALL 来合并用户作为挑战者和应战者的所有已完成比赛
+        query = """
+            (SELECT
+                m.id, m.difficulty, m.completed_at, m.winner_id,
+                opp.id as opponent_id,
+                opp.username as opponent_username
+            FROM matches m
+            JOIN users opp ON m.opponent_id = opp.id
+            WHERE m.challenger_id = %s AND m.status = 'completed')
+
+            UNION ALL
+
+            (SELECT
+                m.id, m.difficulty, m.completed_at, m.winner_id,
+                chal.id as opponent_id,
+                chal.username as opponent_username
+            FROM matches m
+            JOIN users chal ON m.challenger_id = chal.id
+            WHERE m.opponent_id = %s AND m.status = 'completed')
+
+            ORDER BY completed_at DESC
+            LIMIT 50
+        """
+
+        matches = execute_query(query, (user_id, user_id), fetch='all')
+
+        # 处理结果，添加'result'字段，并序列化
+        history = []
+        for match in matches:
+            # 判断输赢
+            if match['winner_id'] is None:
+                # 已完成的比赛理论上应该有 winner_id, 此处为健壮性检查
+                match['result'] = '平局'
+            elif match['winner_id'] == user_id:
+                match['result'] = '胜利'
+            else:
+                match['result'] = '失败'
+
+            history.append(json_serializable(match))
+
+        return jsonify(history or []), 200
+
+    except Exception as e:
+        print(f"获取对战历史失败: {str(e)}")
+        return jsonify({'error': f'获取对战历史失败: {str(e)}'}), 500
+
 @app.route('/api/users/search', methods=['GET'])
 @token_required
 def search_users():
