@@ -111,11 +111,10 @@ class PuzzleGameService {
         piece: piece,
         // 在拼图区域内随机生成位置
         position: ui.Offset(
-          random.nextDouble() * boardSize.width,
-          random.nextDouble() * boardSize.height,
+          random.nextDouble() * boardSize.width*0.92+5,
+          random.nextDouble() * boardSize.height*0.75+35,
         ),
-        // 固定大小为 0.5
-        scale: 0.5,
+        scale: 1.2/sqrt(pieces.length),
         // 随机角度
         rotation: random.nextDouble() * 2 * pi,
         // 初始时，每个拼图块都在自己的组里

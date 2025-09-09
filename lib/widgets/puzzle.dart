@@ -812,17 +812,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
               // 下方待放置拼图区域
               Expanded(child: _buildAvailablePiecesArea()),
-
-              // 底部控制按钮
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Button_toRestart(context),
-                  ],
-                ),
-              ),
             ],
           );
         },
@@ -841,6 +830,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
           Row(
             children: [
               _buildAutoSaveIndicator(), // 新增：存档状态指示器
+              SizedBox(width: 8),
+              _buildRestartButton(), // 新增：重新开始按钮
               SizedBox(width: 16),
               _buildGameStatusIndicator(),
             ],
@@ -906,6 +897,66 @@ class _PuzzlePageState extends State<PuzzlePage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // 新增：重新开始按钮
+  Widget _buildRestartButton() {
+    return Tooltip(
+      message: '重新开始游戏',
+      child: InkWell(
+        onTap: () {
+          // 显示确认对话框
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('确认重新开始'),
+              content: const Text('你确定要重新开始游戏吗？当前进度将会丢失。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _resetGame();
+                  },
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.refresh,
+                size: 14,
+                color: Colors.orange,
+              ),
+              SizedBox(width: 4),
+              Text(
+                '重新开始',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1251,34 +1302,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
           _shouldHighlightTarget = false;
         });
       },
-    );
-  }
-
-  ElevatedButton Button_toRestart(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => PuzzlePage(
-                    difficulty: widget.difficulty,
-                    imagePath: widget.imagePath,
-                  )),
-        );
-      },
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.refresh, size: 18),
-          SizedBox(width: 6),
-          Text('重新开始', style: TextStyle(fontSize: 14)),
-        ],
-      ),
     );
   }
 }

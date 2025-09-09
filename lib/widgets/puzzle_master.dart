@@ -327,8 +327,11 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
                 if (!_gameInitialized && _pendingPieces != null) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _initializeGame(boardSize, _pendingPieces);
-                    _pendingPieces = null;
+                    final pieces = _pendingPieces;
+                    setState(() {
+                      _pendingPieces = null; // 清除待处理的拼图块
+                    });
+                    _initializeGame(boardSize, pieces);
                   });
                 }
 
@@ -508,15 +511,23 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：重置游戏
   void _resetGame() {
-    _gameService.resetMasterGame();
     setState(() {
+      // 重置游戏状态
       _gameInitialized = false;
       _selectedGroupId = null;
       _snapTarget = null;
       _currentScore = 0;
       _currentTime = 0;
       _isGameRunning = false;
+      _pendingPieces = null;
+      _lastSaveTime = DateTime.now();
     });
+
+    // 重置游戏服务
+    _gameService.resetMasterGame();
+
+    // 重新初始化游戏
+    _initializeNewGame();
   }
 
   // 新增：格式化时间显示
@@ -561,17 +572,32 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   Future<void> _initializeGame(ui.Size boardSize,
       [List<PuzzlePiece>? pieces]) async {
     if (_gameInitialized) return;
-    final effectiveImageSource =
-        widget.imageSource ?? 'assets/images/default_puzzle.jpg';
-    final puzzlePieces = pieces ??
-        await _generateService.generatePuzzle(
-            effectiveImageSource, widget.difficulty);
-    _gameService.initMasterGame(puzzlePieces, boardSize);
-    if (mounted) {
-      setState(() {
-        _gameInitialized = true;
-        _isGameRunning = true;
-      });
+
+    try {
+      final effectiveImageSource =
+          widget.imageSource ?? 'assets/images/default_puzzle.jpg';
+      final puzzlePieces = pieces ??
+          await _generateService.generatePuzzle(
+              effectiveImageSource, widget.difficulty);
+
+      _gameService.initMasterGame(puzzlePieces, boardSize);
+
+      if (mounted) {
+        setState(() {
+          _gameInitialized = true;
+          _isGameRunning = true;
+        });
+      }
+    } catch (e) {
+      print('初始化游戏失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('初始化游戏失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -629,7 +655,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
             // --- 分组旋转 ---
             if (details.rotation != 0.0) {
-              final rotationDelta = details.rotation * 0.5;
+              final rotationDelta = details.rotation * 0.04;
               _rotateGroup(groupID, rotationDelta);
             }
 
@@ -828,16 +854,29 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   }
 
   // 新增：初始化新游戏
-  void _initializeNewGame() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+  Future<void> _initializeNewGame() async {
+    try {
       final effectiveImageSource =
           widget.imageSource ?? 'assets/images/default_puzzle.jpg';
       final pieces = await _generateService.generatePuzzle(
           effectiveImageSource, widget.difficulty);
+
+      // 直接设置待初始化的拼图块
       setState(() {
         _pendingPieces = pieces;
       });
-    });
+    } catch (e) {
+      print('初始化新游戏失败: $e');
+      // 如果初始化失败，显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('初始化游戏失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // 新增：检查自动保存
