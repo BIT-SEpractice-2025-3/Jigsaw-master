@@ -18,6 +18,8 @@ class InviteHandler extends StatefulWidget {
 class _InviteHandlerState extends State<InviteHandler> {
   // 获取SocketService的单例
   final SocketService _socketService = SocketService();
+  static bool _listenersInitialized = false;
+  bool _isNavigatingToBattle = false;
 
   // StreamSubscription用于在widget销毁时取消监听，防止内存泄漏
   late StreamSubscription _newInviteSubscription;
@@ -27,10 +29,20 @@ class _InviteHandlerState extends State<InviteHandler> {
   @override
   void initState() {
     super.initState();
-    // 开始监听来自SocketService的各个事件流
-    _newInviteSubscription = _socketService.onNewInvite.listen(_showInviteDialog);
-    _matchStartedSubscription = _socketService.onMatchStarted.listen(_navigateToBattlePage);
-    _friendAcceptedSubscription = _socketService.onFriendRequestAccepted.listen(_showFriendAcceptedSnackbar);
+
+    // ▼▼▼ 核心修正：只有在从未初始化过的情况下才注册监听器 ▼▼▼
+    if (!_listenersInitialized) {
+      // 开始监听来自SocketService的各个事件流
+      _newInviteSubscription = _socketService.onNewInvite.listen(_showInviteDialog);
+      _matchStartedSubscription = _socketService.onMatchStarted.listen(_navigateToBattlePage);
+      _friendAcceptedSubscription = _socketService.onFriendRequestAccepted.listen(_showFriendAcceptedSnackbar);
+
+      // 将标志位置为true，这样即使热重启也不会再次执行这里的代码
+      _listenersInitialized = true;
+      print("✅ InviteHandler listeners initialized for the first time.");
+    } else {
+      print("ℹ️ InviteHandler listeners already initialized, skipping registration.");
+    }
   }
 
   /// 当收到新的对战邀请时，弹出一个全局对话框
@@ -84,17 +96,45 @@ class _InviteHandlerState extends State<InviteHandler> {
   }
 
   /// 当比赛正式开始时，导航到对战页面
-  void _navigateToBattlePage(Match match) {
-    // 确保我们不在对战页面，避免重复进入
-    if (ModalRoute.of(context)?.settings.name != '/puzzle-battle') {
+  void _navigateToBattlePage(Match match) async {
+    // ▼▼▼ 探针 #3：监听器被触发 ▼▼▼
+    // print('>>> [INVITE_HANDLER] 探针 #3: _navigateToBattlePage 监听到事件，准备处理 Match ID ${match.id}。');
+    if (_isNavigatingToBattle) {
+      // print(">>> [INVITE_HANDLER] 警告: 导航锁已激活，阻止了重复导航。");
+      return;
+    }
+
+    // 立即上锁
+    _isNavigatingToBattle = true;
+    // print(">>> [INVITE_HANDLER] 导航锁已激活。");
+
+    // 检查组件是否仍然挂载在树上，这是一个非常重要的检查
+    if (!mounted) {
+      // print('>>> [INVITE_HANDLER] 警告: 组件已卸载(unmounted)，取消导航。');
+      return;
+    }
+
+    // ▼▼▼ 探针 #4：检查导航守卫 ▼▼▼
+    final currentRouteName = ModalRoute.of(context)?.settings.name;
+    // print('>>> [INVITE_HANDLER] 探针 #4: 检查导航守卫。当前路由名称是: "$currentRouteName"。');
+
+    if (currentRouteName != '/puzzle-battle') {
+      // ▼▼▼ 探针 #5：导航守卫通过，准备执行导航 ▼▼▼
+      // print('>>> [INVITE_HANDLER] 探针 #5: 导航守卫通过！正在执行 Navigator.push...');
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          // 给路由一个名字，用于上面的检查
           settings: const RouteSettings(name: '/puzzle-battle'),
           builder: (context) => PuzzleBattlePage(match: match),
         ),
       );
+      // print(">>> [INVITE_HANDLER] 从对战页面返回，导航锁已释放。");
+      _isNavigatingToBattle = false;
+    } else {
+      // ▼▼▼ 探针 #6：导航守卫阻止了重复导航 ▼▼▼
+      // print('>>> [INVITE_HANDLER] 探针 #6: 导航守卫生效，已在对战页面，阻止了重复导航。');
+      _isNavigatingToBattle = false;
     }
   }
 
@@ -110,10 +150,12 @@ class _InviteHandlerState extends State<InviteHandler> {
 
   @override
   void dispose() {
-    // 在widget销毁时，必须取消所有监听，这是非常重要的一步！
-    _newInviteSubscription.cancel();
-    _matchStartedSubscription.cancel();
-    _friendAcceptedSubscription.cancel();
+    // 理论上这个dispose永远不会被调用，因为InviteHandler是根组件
+    // 但保留代码是一个好习惯
+    _newInviteSubscription?.cancel();
+    _matchStartedSubscription?.cancel();
+    _friendAcceptedSubscription?.cancel();
+    _listenersInitialized = false; // 在极少数情况下，如果它被销毁，允许下次重新初始化
     super.dispose();
   }
 

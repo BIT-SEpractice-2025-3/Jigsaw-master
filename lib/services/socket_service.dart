@@ -10,6 +10,7 @@ class SocketService {
   // --- 单例模式设置 ---
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
+  bool _isConnectingOrConnected = false;
   SocketService._internal();
 
   // --- 私有变量 ---
@@ -35,7 +36,18 @@ class SocketService {
 
   /// 连接并开始监听
   void connectAndListen(String token) {
-    if (_socket?.connected == true) return;
+    // ▼▼▼ 核心修正：添加连接守卫 ▼▼▼
+    if (_isConnectingOrConnected) {
+      print("ℹ️ SocketService: 连接请求被阻止，因为已经连接或正在连接中。");
+      return;
+    }
+
+    // 设置标志位，防止在异步操作完成前再次调用
+    _isConnectingOrConnected = true;
+    print("🚀 SocketService: 开始连接...");
+
+    // 如果之前的socket实例存在，先彻底销毁
+    _socket?.dispose();
 
     // 使用 AppConfig 来获取URL
     _socket = IO.io(AppConfig.serverUrl,
@@ -59,9 +71,18 @@ class SocketService {
 
     _socket!.on('new_match_invite', (data) => _onNewInviteController.add(data));
     _socket!.on('match_started', (data) {
-      final matchData = data['match'];
-      if (matchData != null) {
-        _onMatchStartedController.add(Match.fromJson(matchData));
+      // ▼▼▼ 探针 #1：监听原始套接字事件 ▼▼▼
+      // print('>>> [SOCKET_SERVICE] 探针 #1: 收到原始 "match_started" 事件。');
+
+      try {
+        final match = Match.fromJson(data['match']);
+
+        // ▼▼▼ 探针 #2：确认事件已添加到流中 ▼▼▼
+        // print('>>> [SOCKET_SERVICE] 探针 #2: 成功解析 Match ID ${match.id} 并将其添加到流中。');
+        _onMatchStartedController.add(match);
+
+      } catch (e) {
+        // print('>>> [SOCKET_SERVICE] 错误: 解析 Match 对象失败: $e');
       }
     });
     _socket!.on('match_over', (data) => _onMatchOverController.add(data));
@@ -132,8 +153,10 @@ class SocketService {
     print("Disposing SocketService...");
     _socket?.disconnect();
     _socket?.dispose();
+    _isConnectingOrConnected = false;
 
     // 关闭所有StreamController
+
     _onNewInviteController.close();
     _onMatchStartedController.close();
     _onMatchOverController.close();
