@@ -5,6 +5,7 @@ import 'ranking.dart'; // 使用ranking_new.dart
 import 'diy.dart';
 import 'login_page.dart';
 import 'ai_image_generator.dart'; // 添加AI图片生成页面的导入
+import 'achievements.dart'; // 添加成就页面的导入
 import '../services/auth_service.dart'; // 使用auth_service_simple.dart
 import '../pages/friends_page.dart'; // <-- 1. 导入我们之后会创建的好友页面
 import '../services/socket_service.dart'; // <-- 2. 导入Socket服务
@@ -41,7 +42,7 @@ class _HomePageState extends State<HomePage> {
     // 检查组件是否还在树上，这是一个好习惯
     if (mounted && _authService.isLoggedIn) {
       // 登录成功后，使用token连接Socket并进行认证
-      _socketService.connectAndListen(_authService.token!);
+      _socketService.connectAndListen(_authService.currentToken!);
     }
     if (mounted) {
       setState(() {});
@@ -90,7 +91,7 @@ class _HomePageState extends State<HomePage> {
               // 右上角排行榜图标
               Positioned(
                 top: 40,
-                right: 60,
+                right: 100,
                 child: IconButton(
                   onPressed: () {
                     Navigator.push(
@@ -106,6 +107,28 @@ class _HomePageState extends State<HomePage> {
                     size: 28,
                   ),
                   tooltip: '排行榜',
+                ),
+              ),
+
+              // 右上角成就图标
+              Positioned(
+                top: 40,
+                right: 60,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AchievementsPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.emoji_events,
+                    color: Color(0xFFFF9800),
+                    size: 28,
+                  ),
+                  tooltip: '成就',
                 ),
               ),
 

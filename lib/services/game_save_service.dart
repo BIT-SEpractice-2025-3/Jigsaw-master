@@ -154,10 +154,11 @@ class MasterModeSaveData {
 
 class GameSaveService {
   static const String baseUrl = 'http://localhost:5000/api'; // Adjust if needed
+  static final AuthService _authService = AuthService();
 
   static Future<void> saveGame(
       String gameMode, String difficulty, Map<String, dynamic> saveData) async {
-    final token = await AuthService.getToken(); // Assuming static method
+    final token = _authService.token;
     final response = await http.post(
       Uri.parse('$baseUrl/save-game'),
       headers: {
@@ -177,7 +178,7 @@ class GameSaveService {
 
   static Future<Map<String, dynamic>?> loadGame(
       String gameMode, String difficulty) async {
-    final token = await AuthService.getToken();
+    final token = _authService.token;
     final response = await http.get(
       Uri.parse('$baseUrl/load-save?gameMode=$gameMode&difficulty=$difficulty'),
       headers: {
@@ -194,7 +195,7 @@ class GameSaveService {
   }
 
   static Future<void> deleteGame(String gameMode, String difficulty) async {
-    final token = await AuthService.getToken();
+    final token = _authService.token;
     final response = await http.delete(
       Uri.parse(
           '$baseUrl/delete-save?gameMode=$gameMode&difficulty=$difficulty'),
@@ -208,7 +209,7 @@ class GameSaveService {
   }
 
   static Future<bool> hasSave(String gameMode, String difficulty) async {
-    final token = await AuthService.getToken();
+    final token = _authService.token;
     final response = await http.get(
       Uri.parse('$baseUrl/load-save?gameMode=$gameMode&difficulty=$difficulty'),
       headers: {
