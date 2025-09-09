@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 # jigsaw
+=======
+# flutter_simple_demo
+>>>>>>> Stashed changes
 
 A new Flutter project.
 
