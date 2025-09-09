@@ -3,10 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'game_select.dart';
+import 'package:path/path.dart' as path;
 
 class AIImageGeneratorPage extends StatefulWidget {
   const AIImageGeneratorPage({super.key});
@@ -18,7 +17,7 @@ class AIImageGeneratorPage extends StatefulWidget {
 class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
   final TextEditingController _promptController = TextEditingController();
   final TextEditingController _negativePromptController =
-  TextEditingController();
+      TextEditingController();
   bool _isGenerating = false;
   bool _isSaving = false;
   Uint8List? _generatedImageBytes;
@@ -30,9 +29,9 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
     super.initState();
     // 预填充示例提示词
     _promptController.text =
-    "A beautiful landscape with mountains and lake, digital art, 4k";
+        "A beautiful landscape with mountains and lake, digital art, 4k";
     _negativePromptController.text =
-    "blurry, low quality, distorted, watermark";
+        "blurry, low quality, distorted, watermark";
   }
 
   Future<void> _loadDefaultImage() async {
@@ -120,61 +119,44 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
       setState(() {
         _errorMessage = "发生错误: $e";
       });
-    } finally {
+    } finally { 
       setState(() {
         _isGenerating = false;
       });
     }
   }
 
-  Future<void> _saveImageToAssets() async {
-    if (_generatedImageBytes == null) return;
+  Future<String> _saveImageToAssets() async {
+    if (_generatedImageBytes == null) return '';
 
     setState(() {
       _isSaving = true;
     });
 
     try {
-      // 请求存储权限
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
-        setState(() {
-          _errorMessage = "需要存储权限来保存图片";
-        });
-        return;
-      }
-
       // 获取应用文档目录
-      final Directory appDocDir = await getApplicationDocumentsDirectory();
-      final String assetsDirPath = '${appDocDir.path}/assets/ai';
-      final Directory assetsDir = Directory(assetsDirPath);
-
-      if (!await assetsDir.exists()) {
-        await assetsDir.create(recursive: true);
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory(path.join(appDir.path, 'assets/ai'));
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
       }
 
-      // 强制命名为1.png
-      final String fileName = '1.png';
-      final String filePath = '${assetsDir.path}/$fileName';
+      // 获取当前时间戳作为文件名
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'ai_image_$timestamp.png';
+      final targetPath = path.join(imagesDir.path, fileName);
 
       // 保存图片文件
-      final File file = File(filePath);
+      final File file = File(targetPath);
       await file.writeAsBytes(_generatedImageBytes!);
 
-      setState(() {
-        _savedImagePath = filePath;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('图片已保存为: $filePath'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      // 返回保存路径
+      return targetPath;
     } catch (e) {
       setState(() {
         _errorMessage = "保存图片失败: $e";
       });
+      return '';
     } finally {
       setState(() {
         _isSaving = false;
@@ -349,7 +331,21 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
                             icon: Icons.save,
                             color: const Color(0xFF6A5ACD),
                             isLoading: _isSaving,
-                            onPressed: _saveImageToAssets,
+                            onPressed: () async {
+                              final savedPath = await _saveImageToAssets();
+                              if (savedPath.isNotEmpty) {
+                                setState(() {
+                                  _savedImagePath = savedPath;
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('图片已保存为: $savedPath'),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -358,7 +354,9 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
                             text: '使用图片拼图',
                             icon: Icons.extension,
                             color: const Color(0xFF4CAF50),
-                            onPressed: _savedImagePath != null ? _useImageForPuzzle : null,
+                            onPressed: _savedImagePath != null
+                                ? _useImageForPuzzle
+                                : null,
                           ),
                         ),
                       ],
@@ -369,7 +367,8 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
                         padding: const EdgeInsets.only(top: 12.0),
                         child: Text(
                           '已保存: ${_savedImagePath!.split('/').last}',
-                          style: const TextStyle(color: Colors.green, fontSize: 14),
+                          style: const TextStyle(
+                              color: Colors.green, fontSize: 14),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -381,11 +380,13 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
                       padding: const EdgeInsets.only(top: 40.0),
                       child: Column(
                         children: [
-                          Icon(Icons.auto_awesome_mosaic, size: 64, color: Colors.grey[400]),
+                          Icon(Icons.auto_awesome_mosaic,
+                              size: 64, color: Colors.grey[400]),
                           const SizedBox(height: 16),
                           Text(
                             '输入提示词生成自定义拼图图片',
-                            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey[600]),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -566,10 +567,10 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
             child: isLoading
                 ? const CircularProgressIndicator(strokeWidth: 2)
                 : Icon(
-              icon,
-              color: color,
-              size: 28,
-            ),
+                    icon,
+                    color: color,
+                    size: 28,
+                  ),
           ),
           title: Text(
             title,
@@ -600,7 +601,7 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
             ),
           ),
           contentPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
       ),
     );
@@ -625,13 +626,13 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
       onPressed: isLoading ? null : onPressed,
       icon: isLoading
           ? const SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation(Colors.white),
-        ),
-      )
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(Colors.white),
+              ),
+            )
           : Icon(icon, size: 20),
       label: Text(
         text,
