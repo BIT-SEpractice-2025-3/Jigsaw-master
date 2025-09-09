@@ -5,9 +5,11 @@
 import 'package:flutter/material.dart';
 import 'puzzle.dart';
 import 'puzzle_master.dart';
+import 'ai_image_generator.dart';
 
 class GameSelectionPage extends StatelessWidget {
-  const GameSelectionPage({super.key});
+  final String? imagePath; // 添加图片路径参数
+  const GameSelectionPage({super.key, this.imagePath});
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +117,8 @@ class GameSelectionPage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const PuzzleMasterPage(
-                            imageSource: 'assets/images/default_puzzle.jpg',
+                          builder: (context) => PuzzleMasterPage(
+                            imageSource: imagePath,
                             difficulty: 4,
                           ),
                         ),
@@ -125,10 +127,12 @@ class GameSelectionPage extends StatelessWidget {
                     icon: const Icon(Icons.auto_awesome, size: 20),
                     label: const Text(
                       '进入大师模式',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -141,7 +145,10 @@ class GameSelectionPage extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PuzzlePage(difficulty: difficulty),
+        builder: (context) => PuzzlePage(
+          difficulty: difficulty,
+          imagePath: imagePath, // 传递图片路径
+        ),
       ),
     );
   }
@@ -254,17 +261,13 @@ class GameSelectionPage extends StatelessWidget {
     return Material(
       borderRadius: BorderRadius.circular(20),
       elevation: 4,
-      shadowColor: Color.fromRGBO(
-          color.red, color.green, color.blue, 0.3
-      ),
+      shadowColor: Color.fromRGBO(color.red, color.green, color.blue, 0.3),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Color.fromRGBO(
-                color.red, color.green, color.blue, 0.2
-            ),
+            color: Color.fromRGBO(color.red, color.green, color.blue, 0.2),
             width: 1,
           ),
         ),
@@ -274,9 +277,7 @@ class GameSelectionPage extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: Color.fromRGBO(
-                  color.red, color.green, color.blue, 0.15
-              ),
+              color: Color.fromRGBO(color.red, color.green, color.blue, 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -304,9 +305,7 @@ class GameSelectionPage extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Color.fromRGBO(
-                  color.red, color.green, color.blue, 0.1
-              ),
+              color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -315,7 +314,8 @@ class GameSelectionPage extends StatelessWidget {
               size: 16,
             ),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
       ),
     );
@@ -343,7 +343,8 @@ class _PuzzlePiecePainter extends CustomPainter {
     _drawPuzzleTab(canvas, center, radius, 3, paint);
   }
 
-  void _drawPuzzleTab(Canvas canvas, Offset center, double radius, int side, Paint paint) {
+  void _drawPuzzleTab(
+      Canvas canvas, Offset center, double radius, int side, Paint paint) {
     final path = Path();
     final tabWidth = radius / 2;
 

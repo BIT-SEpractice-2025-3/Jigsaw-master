@@ -51,12 +51,12 @@ class MasterPieceData {
 }
 
 class PuzzleMasterPage extends StatefulWidget {
-  final String imageSource;
+  final String? imageSource; // 改为可选
   final int difficulty;
 
   const PuzzleMasterPage({
     Key? key,
-    required this.imageSource,
+    this.imageSource,
     required this.difficulty,
   }) : super(key: key);
 
@@ -561,9 +561,11 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   Future<void> _initializeGame(ui.Size boardSize,
       [List<PuzzlePiece>? pieces]) async {
     if (_gameInitialized) return;
+    final effectiveImageSource =
+        widget.imageSource ?? 'assets/images/default_puzzle.jpg';
     final puzzlePieces = pieces ??
         await _generateService.generatePuzzle(
-            widget.imageSource, widget.difficulty);
+            effectiveImageSource, widget.difficulty);
     _gameService.initMasterGame(puzzlePieces, boardSize);
     if (mounted) {
       setState(() {
@@ -828,8 +830,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   // 新增：初始化新游戏
   void _initializeNewGame() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final effectiveImageSource =
+          widget.imageSource ?? 'assets/images/default_puzzle.jpg';
       final pieces = await _generateService.generatePuzzle(
-          widget.imageSource, widget.difficulty);
+          effectiveImageSource, widget.difficulty);
       setState(() {
         _pendingPieces = pieces;
       });
@@ -866,7 +870,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         'difficulty': widget.difficulty,
         'elapsedSeconds': _currentTime,
         'currentScore': _currentScore,
-        'imageSource': widget.imageSource,
+        'imageSource': widget.imageSource ?? 'assets/images/default_puzzle.jpg',
         'placedPiecesIds': [],
         'availablePiecesIds': [],
         'masterPieces': currentPieces.map((p) => p.toJson()).toList(),
@@ -880,8 +884,11 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   Future<void> _loadGameFromServer(Map<String, dynamic> saveData) async {
     try {
       // 先生成拼图块
+      final effectiveImageSource = saveData['imageSource'] ??
+          widget.imageSource ??
+          'assets/images/default_puzzle.jpg';
       final pieces = await _generateService.generatePuzzle(
-          saveData['imageSource'], widget.difficulty);
+          effectiveImageSource, widget.difficulty);
 
       // 从存档恢复大师模式拼图块
       final masterPieces = (saveData['masterPieces'] as List).map((data) {

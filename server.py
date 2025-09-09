@@ -19,9 +19,9 @@ SECRET_KEY = 'your-secret-key-here'  # 在生产环境中应该使用更安全�
 # 数据库配置
 DB_CONFIG = {
     'host': '127.0.0.1',
-    'port': 29871,
-    'user': 'dev_user',
-    'password': 'devLhx050918@',
+    'port': 3306,
+    'user': 'root',
+    'password': '123dsk',
     'database': 'jigsaw',
     'charset': 'utf8mb4'
 }
@@ -156,14 +156,13 @@ def register():
         import re
         if not re.match(r'^[\w.-]+@[\w.-]+\.\w+$', email):
             return jsonify({'error': '邮箱格式不正确'}), 400
-        
+
         # 检查用户名是否已存在
         existing_user = execute_query(
             "SELECT id FROM users WHERE username = %s OR email = %s",
             (username, email),
             fetch='one'
         )
-
         if existing_user:
             return jsonify({'error': '用户名或邮箱已存在'}), 409
 

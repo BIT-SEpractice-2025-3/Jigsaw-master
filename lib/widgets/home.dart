@@ -4,6 +4,7 @@ import 'ranking.dart'; // 使用ranking_new.dart
 import 'diy.dart';
 import 'login_page.dart';
 import 'setting.dart';
+import 'ai_image_generator.dart'; // 添加AI图片生成页面的导入
 import '../services/auth_service.dart'; // 使用auth_service_simple.dart
 
 class HomePage extends StatefulWidget {
@@ -155,6 +156,37 @@ class _HomePageState extends State<HomePage> {
                               builder: (context) => const SettingsPage()),
                         );
                       },
+                    ),
+                    // AI生成图片按钮
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          // 跳转到AI图片生成页面
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AIImageGeneratorPage(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.auto_awesome,
+                            size: 20), // 可以使用Icons.auto_awesome
+                        label: const Text(
+                          'AI生成拼图图片',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -484,11 +516,6 @@ class _PuzzlePiecePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 3;
 
