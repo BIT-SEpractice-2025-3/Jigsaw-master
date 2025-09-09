@@ -18,6 +18,8 @@ dependencies:
   path: ^1.8.3
   http: ^0.13.5
   permission_handler: ^11.3.1
+  provider: ^6.1.2 # 用于全局状态管理，如接收邀请
+  socket_io_client: ^2.0.3 # WebSocket客户端```
 
 dev_dependencies:
   flutter_test:

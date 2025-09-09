@@ -6,7 +6,8 @@ import 'login_page.dart';
 import 'setting.dart';
 import 'ai_image_generator.dart'; // 添加AI图片生成页面的导入
 import '../services/auth_service.dart'; // 使用auth_service_simple.dart
-
+import '../pages/friends_page.dart'; // <-- 1. 导入我们之后会创建的好友页面
+import '../services/socket_service.dart'; // <-- 2. 导入Socket服务
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -16,26 +17,29 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
-
+  final SocketService _socketService = SocketService();
   @override
   void initState() {
     super.initState();
-    _loadAuthData();
+    _loadAuthDataAndConnectSocket(); // <-- 4. 调用新的初始化方法
   }
 
-  Future<void> _loadAuthData() async {
+  // 替换原来的 _loadAuthData 方法
+  Future<void> _loadAuthDataAndConnectSocket() async {
     await _authService.loadAuthData();
+    // 检查组件是否还在树上，这是一个好习惯
+    if (mounted && _authService.isLoggedIn) {
+      // 登录成功后，使用token连接Socket并进行认证
+      _socketService.connectAndListen(_authService.token!);
+    }
     if (mounted) {
       setState(() {});
     }
   }
 
-  // 刷新用户状态
+  // 替换原来的 _refreshAuthState 方法
   Future<void> _refreshAuthState() async {
-    await _authService.loadAuthData();
-    if (mounted) {
-      setState(() {});
-    }
+    await _loadAuthDataAndConnectSocket(); // 刷新时也需要重新连接socket
   }
 
   @override
@@ -112,6 +116,33 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
+                    const SizedBox(height: 16),
+                    _buildMenuButton(
+                      context: context,
+                      icon: Icons.people_alt_rounded,
+                      title: '好友对战',
+                      subtitle: '邀请好友一决高下',
+                      color: const Color(0xFF1E88E5), // 蓝色
+                      onPressed: () {
+                        if (_authService.isLoggedIn) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const FriendsPage()),
+                          );
+                        } else {
+                          // 提示用户需要登录
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('请先登录以使用好友功能'),
+                                behavior: SnackBarBehavior.floating,
+                              )
+                          );
+                          // 可选：跳转到登录页
+                          // Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginPage()));
+                        }
+                      },
+                    ),
+                    // ▲▲▲ 添加结束 ▲▲▲
                     const SizedBox(height: 16),
                     _buildMenuButton(
                       context: context,
@@ -290,6 +321,7 @@ class _HomePageState extends State<HomePage> {
             TextButton(
               onPressed: () async {
                 await _authService.logout();
+                _socketService.dispose(); // <-- 6. 用户登出时，断开Socket连接
                 _refreshAuthState();
               },
               child: const Text(
