@@ -182,6 +182,7 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       // 与其他页面保持一致：顶部显示返回按钮
       appBar: AppBar(
         leading: const BackButton(),
@@ -200,6 +201,7 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
                 children: [
                   const Column(
                     children: [
+                      SizedBox(height: 100),
                       Icon(
                         Icons.auto_awesome,
                         size: 70,

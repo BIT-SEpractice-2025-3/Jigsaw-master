@@ -8,6 +8,7 @@ import 'dart:convert'; // 导入JSON处理库
 import 'package:path/path.dart' as path; // 导入路径处理库
 import 'package:file_picker/file_picker.dart';
 import 'puzzle.dart';
+import 'puzzle_master.dart';
 import '../services/puzzle_generate_service.dart';
 import '../models/puzzle_piece.dart';
 
@@ -24,6 +25,7 @@ class _DiyPageState extends State<DiyPage> {
   final ImagePicker _picker = ImagePicker(); // 读取图片工具
   bool _showPreview = false; // 是否已经显示了预览
   int _gridSize = 3; // 默认3x3网格
+  String _selectedMode = 'classic'; // 默认经典模式
   List<PuzzlePiece>? _previewPieces; // 用于存储预览拼图块
 
   // 难度选项定义
@@ -34,6 +36,7 @@ class _DiyPageState extends State<DiyPage> {
       'description': '3x3 (9块)',
       'icon': Icons.sentiment_satisfied,
       'color': const Color(0xFF6A5ACD), // 蓝紫
+      'mode': 'classic',
     },
     {
       'value': 4,
@@ -41,6 +44,7 @@ class _DiyPageState extends State<DiyPage> {
       'description': '4x4 (16块)',
       'icon': Icons.sentiment_neutral,
       'color': const Color(0xFFFF9800), // 黄
+      'mode': 'classic',
     },
     {
       'value': 5,
@@ -48,6 +52,15 @@ class _DiyPageState extends State<DiyPage> {
       'description': '5x5 (25块)',
       'icon': Icons.sentiment_dissatisfied,
       'color': const Color(0xFFE91E63), // 红
+      'mode': 'classic',
+    },
+    {
+      'value': 3,
+      'label': '大师',
+      'description': '自由拼图',
+      'icon': Icons.auto_awesome,
+      'color': const Color(0xFF9C27B0), // 紫色
+      'mode': 'master',
     },
   ];
 
@@ -57,7 +70,7 @@ class _DiyPageState extends State<DiyPage> {
     final isSmallScreen = screenSize.width < 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color.fromARGB(255, 239, 225, 250),
       appBar: AppBar(
         title: const Text(
           "自定义拼图",
@@ -400,24 +413,46 @@ class _DiyPageState extends State<DiyPage> {
       child: ElevatedButton.icon(
         onPressed: _selectedImage != null
             ? () async {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-
                 final imagePath = _savedImagePath ?? _selectedImage!.path;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PuzzlePage(
-                      imagePath: imagePath,
-                      difficulty: _mapGridSizeToDifficulty(_gridSize),
+
+                if (_selectedMode == 'master') {
+                  // 大师模式
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('开始大师模式拼图'),
+                      backgroundColor: Colors.green,
                     ),
-                  ),
-                );
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PuzzleMasterPage(
+                        imageSource: imagePath,
+                        difficulty: _mapGridSizeToDifficulty(_gridSize),
+                      ),
+                    ),
+                  );
+                } else {
+                  // 经典模式
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          '开始${_gridSize}x$_gridSize拼图，难度：${_getDifficultyText()}'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PuzzlePage(
+                        imagePath: imagePath,
+                        difficulty: _mapGridSizeToDifficulty(_gridSize),
+                      ),
+                    ),
+                  );
+                }
               }
             : null,
         icon: const Icon(Icons.play_arrow_rounded, size: 24),
@@ -543,12 +578,12 @@ class _DiyPageState extends State<DiyPage> {
       height: 60,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF6A5ACD),
-            const Color(0xFF6A5ACD),
+            Color(0xFF6A5ACD),
+            Color(0xFF6A5ACD),
           ],
         ),
         boxShadow: [
@@ -657,9 +692,9 @@ class _DiyPageState extends State<DiyPage> {
                   color: const Color(0xFF6A5ACD).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.tune_rounded,
-                  color: const Color(0xFF6A5ACD),
+                  color: Color(0xFF6A5ACD),
                   size: 20,
                 ),
               ),
@@ -708,8 +743,8 @@ class _DiyPageState extends State<DiyPage> {
         ],
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _gridSize,
+        child: DropdownButton<String>(
+          value: '${_gridSize}_$_selectedMode',
           isExpanded: true,
           icon: Container(
             padding: const EdgeInsets.all(8),
@@ -771,9 +806,10 @@ class _DiyPageState extends State<DiyPage> {
               );
             }).toList();
           },
-          items: _difficultyOptions.map<DropdownMenuItem<int>>((option) {
-            return DropdownMenuItem<int>(
-              value: option['value'] as int,
+          items: _difficultyOptions.map<DropdownMenuItem<String>>((option) {
+            final value = '${option['value']}_${option['mode']}';
+            return DropdownMenuItem<String>(
+              value: value,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                 child: Row(
@@ -809,9 +845,12 @@ class _DiyPageState extends State<DiyPage> {
               ),
             );
           }).toList(),
-          onChanged: (int? newValue) {
+          onChanged: (String? newValue) {
             if (newValue != null) {
-              _updateGridSize(newValue);
+              final parts = newValue.split('_');
+              final gridSize = int.parse(parts[0]);
+              final mode = parts[1];
+              _updateGridSizeAndMode(gridSize, mode);
             }
           },
         ),
@@ -1125,10 +1164,11 @@ class _DiyPageState extends State<DiyPage> {
     }
   }
 
-  // 调整网格大小
-  void _updateGridSize(int size) {
+  // 调整网格大小和模式
+  void _updateGridSizeAndMode(int size, String mode) {
     setState(() {
       _gridSize = size;
+      _selectedMode = mode;
       // 如果当前正在显示预览，则需要重新生成拼图块
       if (_showPreview) {
         // 先隐藏，再重新生成并显示
