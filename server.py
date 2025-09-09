@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 import time
 import hashlib
@@ -9,24 +10,29 @@ from functools import wraps
 import jwt
 import mysql.connector
 from mysql.connector import Error
+import re
 
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
+SECRET_KEY = 'your-secret-key-here'
+app.config['SECRET_KEY'] = SECRET_KEY # 为SocketIO设置一个密钥
+socketio = SocketIO(app, cors_allowed_origins="*") # 允许SocketIO跨域
 
-# 配置
-SECRET_KEY = 'your-secret-key-here'  # 在生产环境中应该使用更安全的密钥
 
 # 数据库配置
 DB_CONFIG = {
     'host': '127.0.0.1',
-    'port': 29871,
+    'port': 3306,
     'user': 'dev_user',
     'password': 'devLhx050918@',
     'database': 'jigsaw',
     'charset': 'utf8mb4'
 }
 
+online_users = {}  # 格式: { user_id: session_id }
+authenticated_sids = {} # 格式: { session_id: user_payload }
 # 数据库连接函数
+
 def get_db_connection():
     """获取数据库连接"""
     try:
@@ -67,6 +73,15 @@ def hash_password(password):
     """密码哈希"""
     return hashlib.sha256(password.encode()).hexdigest()
 
+def json_serializable(data):
+    """一个辅助函数，用于转换字典中非JSON序列化的类型"""
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, datetime.datetime):
+                data[k] = v.isoformat()  # 将 datetime 对象转换为字符串
+            elif isinstance(v, Decimal):
+                data[k] = float(v)       # 将 Decimal 对象转换为浮点数
+    return data
 def generate_token(user_data):
     """生成JWT token"""
     if jwt is None:
@@ -110,15 +125,29 @@ def verify_token(token):
         return None
 
 def token_required(f):
-    """装饰器：需要token验证"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
+        token = None
+        # 兼容 HTTP Header 和 SocketIO 事件
+        if 'Authorization' in request.headers:
+            token = request.headers.get('Authorization')
+        elif request.args.get('token'): # 兼容URL参数
+            token = request.args.get('token')
+        
+        if not token:
+            # 兼容 socketio.on 事件的第一个参数（如果它是token的话）
+            if args and isinstance(args[0], str) and len(args[0]) > 50:
+                 token = args[0]
+            else: # 尝试从data字典中获取
+                data = args[0] if args and isinstance(args[0], dict) else {}
+                token = data.get('token')
+
         if not token:
             return jsonify({'error': '缺少token'}), 401
         
         try:
-            token = token.split(' ')[1]  # 移除 'Bearer ' 前缀
+            if 'Bearer' in token:
+                token = token.split(' ')[1]
         except IndexError:
             return jsonify({'error': 'token格式错误'}), 401
         
@@ -126,10 +155,236 @@ def token_required(f):
         if not payload:
             return jsonify({'error': 'token无效或已过期'}), 401
         
+        # 将用户信息附加到请求对象上，方便后续使用
         request.user = payload
         return f(*args, **kwargs)
     
     return decorated
+def authenticated_only(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # 检查当前会话ID是否在我们的已认证字典中
+        if request.sid not in authenticated_sids:
+            # 如果未认证，可以选择静默忽略或发送错误
+            print(f"拒绝未经认证的sid {request.sid} 的事件请求")
+            emit('authentication_failed', {'error': '会话未认证或已过期'})
+            return
+
+        # 如果已认证，将用户信息附加到请求中，方便后续使用
+        request.user = authenticated_sids[request.sid]
+        return f(*args, **kwargs)
+    return decorated
+# ===================================================================
+#                      WebSocket 实时事件处理
+# ===================================================================
+
+@socketio.on('connect')
+def handle_connect():
+    """客户端连接成功"""
+    print(f'客户端连接成功, sid: {request.sid}')
+
+@socketio.on('authenticate')
+def handle_authenticate(data):
+    """客户端连接后发送token进行认证"""
+    token = data.get('token')
+    payload = verify_token(token)
+    if payload:
+        user_id = payload['user_id']
+        online_users[user_id] = request.sid
+        authenticated_sids[request.sid] = payload
+        join_room(str(user_id))  # 每个用户进入以自己ID命名的房间，方便定向通知
+        print(f"用户 {user_id} ({payload['username']}) 已认证上线, sid: {request.sid}")
+        # 通知该用户的好友，他上线了
+        friends = get_user_friends_list(user_id)
+        for friend in friends:
+            if friend['id'] in online_users:
+                emit('friend_status_update', {'user_id': user_id, 'status': 'online'}, room=str(friend['id']))
+        emit('authentication_success', {'user_id': user_id})
+    else:
+        emit('authentication_failed', {'error': '无效的token'})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """客户端断开连接"""
+    # ▼▼▼ 新增：从我们的新字典中移除断开连接的会话 ▼▼▼
+    if request.sid in authenticated_sids:
+        disconnected_user_payload = authenticated_sids.pop(request.sid)
+        user_id_to_notify = disconnected_user_payload['user_id']
+
+        # 从 online_users 也移除
+        if user_id_to_notify in online_users:
+            del online_users[user_id_to_notify]
+
+        print(f"用户 {user_id_to_notify} ({disconnected_user_payload['username']}) 已下线")
+        # 通知好友下线 (这部分逻辑可以保持)
+        friends = get_user_friends_list(user_id_to_notify)
+        for friend in friends:
+            if friend['id'] in online_users:
+                emit('friend_status_update', {'user_id': user_id_to_notify, 'status': 'offline'}, room=str(friend['id']))
+    else:
+        print(f"一个未经认证的会话 {request.sid} 断开了连接")
+
+
+@socketio.on('invite_to_match')
+@authenticated_only  # <-- 使用新装饰器
+def handle_invite_to_match(data):
+    """处理发起对战邀请"""
+    challenger_id = request.user['user_id']
+    challenger_username = request.user['username']
+    opponent_id = data.get('opponent_id')
+    difficulty = data.get('difficulty')
+    image_source = data.get('image_source')
+
+    if not all([opponent_id, difficulty, image_source]):
+        emit('error', {'message': '邀请信息不完整'})
+        return
+
+    # 1. 在数据库创建比赛记录
+    match_id = execute_query(
+        "INSERT INTO matches (challenger_id, opponent_id, difficulty, image_source, status) VALUES (%s, %s, %s, %s, 'pending')",
+        (challenger_id, opponent_id, difficulty, image_source)
+    )
+
+    # 2. 如果对手在线，发送实时邀请通知
+    if opponent_id in online_users:
+        emit('new_match_invite', {
+            'match_id': match_id,
+            'challenger_id': challenger_id,
+            'challenger_username': challenger_username,
+            'difficulty': difficulty,
+            'image_source': image_source,
+        }, room=str(opponent_id))
+    else:
+        # 对手不在线，可以考虑后续实现离线消息系统
+        print(f"邀请失败：用户 {opponent_id} 不在线")
+        emit('error', {'message': f'邀请失败，玩家不在线'})
+
+
+@socketio.on('respond_to_invite')
+@authenticated_only
+def handle_respond_to_invite(data):
+    """处理对战邀请的回应"""
+    user_id = request.user['user_id']
+    match_id = data.get('match_id')
+    response = data.get('response') # 'accepted' or 'declined'
+
+    match = execute_query("SELECT * FROM matches WHERE id = %s AND opponent_id = %s AND status = 'pending'", (match_id, user_id), fetch='one')
+    if not match:
+        emit('error', {'message': '无效的邀请或邀请已过期'})
+        return
+
+    challenger_id = match['challenger_id']
+
+    if response == 'accepted':
+        execute_query("UPDATE matches SET status='in_progress', started_at=CURRENT_TIMESTAMP WHERE id=%s", (match_id,))
+
+        updated_match = execute_query("SELECT * FROM matches WHERE id=%s", (match_id,), fetch='one')
+
+        # 2. 序列化数据
+        serializable_match = json_serializable(updated_match)
+
+        # 3. 发送一个清晰、扁平的 'match' 对象
+        # 不再使用 'match_id' 和 'match_details' 的嵌套结构
+        emit('match_started', {'match': serializable_match}, room=str(challenger_id))
+        emit('match_started', {'match': serializable_match}, room=str(user_id))
+
+    else: # 'declined'
+        execute_query("UPDATE matches SET status='declined' WHERE id=%s", (match_id,))
+        # 通知挑战者，邀请被拒绝
+        emit('invite_declined', {'match_id': match_id, 'opponent_username': request.user['username']}, room=str(challenger_id))
+
+@socketio.on('player_progress_update')
+@authenticated_only
+def handle_progress_update(data):
+    """处理玩家游戏进度更新"""
+    user_id = request.user['user_id']
+    match_id = data.get('match_id')
+    progress = data.get('progress') # e.g., 25.5 (百分比)
+    
+    match = execute_query("SELECT challenger_id, opponent_id FROM matches WHERE id = %s", (match_id,), fetch='one')
+    if not match: return
+    
+    # 确定对手ID
+    opponent_id = match['opponent_id'] if user_id == match['challenger_id'] else match['challenger_id']
+    
+    # 将进度转发给对手
+    if opponent_id in online_users:
+        emit('opponent_progress_update', {'progress': progress}, room=str(opponent_id))
+
+
+@socketio.on('player_finished')
+@authenticated_only
+def handle_player_finished(data):
+    """
+    处理玩家完成拼图 (新逻辑：第一个完成者直接获胜)
+    """
+    user_id = request.user['user_id']
+    match_id = data.get('match_id')
+    time_ms = data.get('time_ms')
+
+    if not match_id:
+        print(f"无效的 'player_finished' 事件：缺少 match_id。")
+        return
+
+    # ▼▼▼ 核心逻辑修改 ▼▼▼
+
+    # 1. 获取比赛当前状态，并检查是否已经结束
+    # 这一步至关重要，防止两个玩家在毫秒级的时间差内都完成，导致逻辑冲突
+    match = execute_query("SELECT * FROM matches WHERE id=%s", (match_id,), fetch='one')
+
+    if not match:
+        print(f"比赛 {match_id} 不存在。")
+        return
+
+    # 如果比赛状态不是 "in_progress"，说明已经有胜利者产生了，直接返回
+    if match['status'] != 'in_progress':
+        print(f"比赛 {match_id} 已结束，忽略来自玩家 {user_id} 的完成请求。")
+        return
+
+    # 2. 如果比赛仍在进行，那么当前这位玩家就是胜利者！
+    winner_id = user_id
+
+    # 3. 准备更新数据库：设置胜利者、比赛状态、完成时间等
+    # 我们只更新胜利者的时间，失败者的时间将保持为 NULL
+    update_column = None
+    if user_id == match['challenger_id']:
+        update_column = "challenger_time_ms"
+    elif user_id == match['opponent_id']:
+        update_column = "opponent_time_ms"
+    else:
+        # 理论上不会发生，但作为安全检查
+        print(f"用户 {user_id} 不是比赛 {match_id} 的参与者。")
+        return
+
+    print(f"玩家 {user_id} 第一个完成比赛 {match_id}！宣布为胜利者。")
+
+    # 在一个查询中完成所有更新，确保数据一致性
+    final_update_query = f"""
+        UPDATE matches
+        SET
+            status = 'completed',
+            winner_id = %s,
+            completed_at = CURRENT_TIMESTAMP,
+            {update_column} = %s
+        WHERE id = %s
+    """
+    execute_query(final_update_query, (winner_id, time_ms, match_id))
+
+    # 4. 向双方广播比赛结束的消息
+    final_result = execute_query("SELECT * FROM matches WHERE id=%s", (match_id,), fetch='one')
+    serializable_result = json_serializable(final_result)
+
+    challenger_id = match['challenger_id']
+    opponent_id = match['opponent_id']
+
+    print(f"向玩家 {challenger_id} 和 {opponent_id} 广播比赛 {match_id} 的结束结果。")
+    emit('match_over', {'result': serializable_result}, room=str(challenger_id))
+    emit('match_over', {'result': serializable_result}, room=str(opponent_id))
+
+    # ▲▲▲ 核心逻辑修改结束 ▲▲▲
+
+
 
 # API路由
 
@@ -397,6 +652,135 @@ def get_profile():
     except Exception as e:
         return jsonify({'error': f'获取用户资料失败: {str(e)}'}), 500
 
+
+@app.route('/api/users/search', methods=['GET'])
+@token_required
+def search_users():
+    """根据用户名或邮箱搜索用户"""
+    query_str = request.args.get('query', '').strip()
+    user_id = request.user['user_id']
+    if len(query_str) < 2:
+        return jsonify({'error': '搜索词至少需要2个字符'}), 400
+
+    # 复杂的查询，排除自己，并找出与自己已存在的关系
+    query = """
+    SELECT u.id, u.username, f.status, f.action_user_id
+    FROM users u
+    LEFT JOIN friendships f ON (
+        (f.user_one_id = u.id AND f.user_two_id = %s) OR
+        (f.user_one_id = %s AND f.user_two_id = u.id)
+    )
+    WHERE (u.username LIKE %s OR u.email LIKE %s) AND u.id != %s
+    LIMIT 10
+    """
+    search_term = f"%{query_str}%"
+    users = execute_query(query, (user_id, user_id, search_term, search_term, user_id), fetch='all')
+    return jsonify(users or []), 200
+
+@app.route('/api/friends/request', methods=['POST'])
+@token_required
+def send_friend_request():
+    """发送好友请求"""
+    data = request.get_json()
+    target_user_id = data.get('target_user_id')
+    if not target_user_id:
+        return jsonify({'error': '缺少目标用户ID'}), 400
+
+    current_user_id = request.user['user_id']
+    if int(target_user_id) == current_user_id:
+        return jsonify({'error': '不能添加自己为好友'}), 400
+    
+    user_one_id = min(current_user_id, int(target_user_id))
+    user_two_id = max(current_user_id, int(target_user_id))
+
+    existing = execute_query("SELECT id FROM friendships WHERE user_one_id = %s AND user_two_id = %s", (user_one_id, user_two_id), fetch='one')
+    if existing:
+        return jsonify({'error': '请求已发送或已是好友'}), 409
+
+    execute_query(
+        "INSERT INTO friendships (user_one_id, user_two_id, action_user_id, status) VALUES (%s, %s, %s, 'pending')",
+        (user_one_id, user_two_id, current_user_id)
+    )
+
+    # 实时通知对方
+    if target_user_id in online_users:
+        emit('new_friend_request', {
+            'from_user_id': current_user_id,
+            'from_username': request.user['username']
+        }, room=str(target_user_id), namespace='/') # 确保在全局命名空间发送
+
+    return jsonify({'message': '好友请求已发送'}), 201
+
+def get_user_friends_list(user_id):
+    """辅助函数：获取用户的好友列表"""
+    query = """
+        SELECT u.id, u.username FROM users u
+        JOIN friendships f ON (u.id = f.user_one_id OR u.id = f.user_two_id)
+        WHERE (f.user_one_id = %s OR f.user_two_id = %s)
+          AND u.id != %s
+          AND f.status = 'accepted'
+    """
+    return execute_query(query, (user_id, user_id, user_id), fetch='all')
+
+
+@app.route('/api/friends', methods=['GET'])
+@token_required
+def get_friends():
+    """获取好友列表"""
+    user_id = request.user['user_id']
+    friends = get_user_friends_list(user_id)
+    
+    # 附加在线状态
+    for friend in friends:
+        friend['status'] = 'online' if friend['id'] in online_users else 'offline'
+        
+    return jsonify(friends or []), 200
+
+@app.route('/api/friends/requests', methods=['GET'])
+@token_required
+def get_friend_requests():
+    """获取收到的好友请求"""
+    user_id = request.user['user_id']
+    query = """
+        SELECT f.id as friendship_id, u.id as user_id, u.username
+        FROM friendships f
+        JOIN users u ON u.id = f.action_user_id
+        WHERE (f.user_one_id = %s OR f.user_two_id = %s)
+          AND f.status = 'pending'
+          AND f.action_user_id != %s
+    """
+    requests = execute_query(query, (user_id, user_id, user_id), fetch='all')
+    return jsonify(requests or []), 200
+
+@app.route('/api/friends/respond', methods=['POST'])
+@token_required
+def respond_to_friend_request():
+    """回应好友请求"""
+    data = request.get_json()
+    friendship_id = data.get('friendship_id')
+    action = data.get('action') # 'accept' or 'decline'
+
+    if not friendship_id or action not in ['accept', 'decline']:
+        return jsonify({'error': '无效的请求'}), 400
+    
+    # 安全性检查：确保当前用户是该请求的接收者
+    user_id = request.user['user_id']
+    friendship = execute_query("SELECT * FROM friendships WHERE id = %s AND (user_one_id = %s OR user_two_id = %s) AND action_user_id != %s",
+                               (friendship_id, user_id, user_id, user_id), fetch='one')
+    if not friendship:
+        return jsonify({'error': '好友请求不存在'}), 404
+
+    if action == 'accept':
+        execute_query("UPDATE friendships SET status = 'accepted', action_user_id = %s WHERE id = %s", (user_id, friendship_id))
+        # 实时通知对方请求已被接受
+        other_user_id = friendship['action_user_id']
+        if other_user_id in online_users:
+             emit('friend_request_accepted', {'username': request.user['username']}, room=str(other_user_id), namespace='/')
+        return jsonify({'message': '已添加好友'}), 200
+    else: # decline
+        execute_query("DELETE FROM friendships WHERE id = %s", (friendship_id,))
+        return jsonify({'message': '已拒绝请求'}), 200
+
 @app.route('/api/save-game', methods=['POST'])
 @token_required
 def submit_save():
@@ -662,4 +1046,4 @@ def health_check():
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 503
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

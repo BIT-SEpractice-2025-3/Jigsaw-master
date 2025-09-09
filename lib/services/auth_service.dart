@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
+import '../config/app_config.dart';
 class AuthService {
-  static const String _baseUrl = 'http://10.195.131.11:5000/api';
+  static const String _baseUrl = '${AppConfig.serverUrl}/api';
 
   String? _token;
   Map<String, dynamic>? _currentUser;
+  String? get token => _token;
 
   // 单例模式，确保全局唯一实例
   static final AuthService _instance = AuthService._internal();
