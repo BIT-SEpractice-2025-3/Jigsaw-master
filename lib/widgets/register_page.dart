@@ -20,6 +20,36 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // 缓存样式对象
+  late final ButtonStyle _buttonStyle;
+  late final TextStyle _titleStyle;
+  late final InputDecoration _inputDecoration;
+
+  @override
+  void initState() {
+    super.initState();
+    // 预先创建样式对象
+    _buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: Colors.blue.shade700,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+    
+    _titleStyle = TextStyle(
+      fontSize: 28,
+      fontWeight: FontWeight.bold,
+      color: Colors.blue.shade700,
+    );
+    
+    _inputDecoration = InputDecoration(
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -89,32 +119,29 @@ class _RegisterPageState extends State<RegisterPage> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.person_add,
-                          size: 80,
-                          color: Colors.blue.shade700,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          '创建账号',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+              child: RepaintBoundary(
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_add,
+                            size: 80,
                             color: Colors.blue.shade700,
                           ),
-                        ),
+                          const SizedBox(height: 24),
+                          Text(
+                            '创建账号',
+                            style: _titleStyle,
+                          ),
                         const SizedBox(height: 32),
                         TextFormField(
                           controller: _usernameController,
@@ -230,13 +257,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           height: 50,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _register,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade700,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                            style: _buttonStyle,
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
                                 : const Text(
@@ -267,6 +288,7 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
+      )
     );
   }
 }

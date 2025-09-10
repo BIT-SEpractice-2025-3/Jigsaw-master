@@ -167,8 +167,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
             // 用户选择不加载存档，删除服务器上的存档
             try {
               await authService.deleteSave('classic', widget.difficulty);
-            } catch (e) {
-            }
+            } catch (e) {}
           }
         }
       }
@@ -265,13 +264,10 @@ class _PuzzlePageState extends State<PuzzlePage> {
             // 尝试放置拼图块到指定位置
             final success = _gameService.placePiece(pieceIndex, position);
             if (success) {
-            } else {
-            }
-          } else {
-          }
+            } else {}
+          } else {}
         }
       }
-
     } catch (e) {
       // 如果恢复失败，抛出异常让上层处理
       throw Exception('恢复游戏状态失败: $e');
@@ -312,8 +308,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
     // 游戏完成，删除服务器存档
     final authService = AuthService();
     if (authService.isLoggedIn) {
-      authService
-          .deleteSave('classic', widget.difficulty);
+      authService.deleteSave('classic', widget.difficulty);
     }
 
     showDialog(
@@ -351,7 +346,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
                       children: [
                         const Text('⏱️ 用时:',
                             style: TextStyle(fontWeight: FontWeight.w500)),
-                        Text(time, style: const TextStyle(fontFamily: 'monospace')),
+                        Text(time,
+                            style: const TextStyle(fontFamily: 'monospace')),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -377,7 +373,12 @@ class _PuzzlePageState extends State<PuzzlePage> {
                 Navigator.of(context).pop();
                 _resetGame();
               },
-              child: const Text('再来一次'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(60, 36),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+              child: const Text('再来一次', style: TextStyle(fontSize: 13)),
             ),
             TextButton(
               onPressed: () {
@@ -388,7 +389,12 @@ class _PuzzlePageState extends State<PuzzlePage> {
                   (route) => false,
                 );
               },
-              child: const Text('返回主页'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(60, 36),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+              child: const Text('返回主页', style: TextStyle(fontSize: 13)),
             ),
             // 新增：提交分数按钮
             ElevatedButton(
@@ -401,8 +407,11 @@ class _PuzzlePageState extends State<PuzzlePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
+                minimumSize: const Size(70, 36),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               ),
-              child: const Text('提交分数'),
+              child: const Text('提交分数', style: TextStyle(fontSize: 13)),
             ),
           ],
         );
@@ -469,8 +478,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
         };
         await authService.submitSave(saveData);
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   // 新增：在拼图块放置后立即保存

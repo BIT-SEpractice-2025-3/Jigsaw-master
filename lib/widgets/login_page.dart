@@ -18,6 +18,45 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  
+  // 缓存常用的样式和装饰器
+  late final InputDecoration _emailDecoration;
+  late final InputDecoration _passwordDecoration;
+  late final ButtonStyle _buttonStyle;
+  late final TextStyle _titleStyle;
+  late final TextStyle _buttonTextStyle;
+
+  @override
+  void initState() {
+    super.initState();
+    // 预先创建样式对象，避免每次build时重新创建
+    _emailDecoration = InputDecoration(
+      labelText: '邮箱',
+      prefixIcon: const Icon(Icons.email),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+    
+    _buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: Colors.blue.shade700,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+    
+    _titleStyle = TextStyle(
+      fontSize: 32,
+      fontWeight: FontWeight.bold,
+      color: Colors.blue.shade700,
+    );
+    
+    _buttonTextStyle = const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    );
+  }
 
   @override
   void dispose() {
@@ -79,43 +118,34 @@ class _LoginPageState extends State<LoginPage> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.extension,
-                          size: 80,
-                          color: Colors.blue.shade700,
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          '拼图游戏',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
+              child: RepaintBoundary(
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.extension,
+                            size: 80,
                             color: Colors.blue.shade700,
                           ),
+                          const SizedBox(height: 24),
+                        Text(
+                          '拼图游戏',
+                          style: _titleStyle,
                         ),
                         const SizedBox(height: 32),
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: '邮箱',
-                            prefixIcon: const Icon(Icons.email),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
+                          decoration: _emailDecoration,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return '请输入邮箱';
@@ -128,36 +158,41 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: '密码',
-                            prefixIcon: const Icon(Icons.lock),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
+                        ValueListenableBuilder<bool>(
+                          valueListenable: ValueNotifier(_obscurePassword),
+                          builder: (context, obscurePassword, child) {
+                            return TextFormField(
+                              controller: _passwordController,
+                              obscureText: obscurePassword,
+                              decoration: InputDecoration(
+                                labelText: '密码',
+                                prefixIcon: const Icon(Icons.lock),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    obscurePassword
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return '请输入密码';
+                                }
+                                if (value.length < 6) {
+                                  return '密码至少6位';
+                                }
+                                return null;
                               },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return '请输入密码';
-                            }
-                            if (value.length < 6) {
-                              return '密码至少6位';
-                            }
-                            return null;
+                            );
                           },
                         ),
                         const SizedBox(height: 24),
@@ -166,21 +201,10 @@ class _LoginPageState extends State<LoginPage> {
                           height: 50,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _login,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade700,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
+                            style: _buttonStyle,
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text(
-                                    '登录',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold),
-                                  ),
+                                : Text('登录', style: _buttonTextStyle),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -225,6 +249,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
+      )
     );
   }
 }

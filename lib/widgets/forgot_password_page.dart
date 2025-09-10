@@ -14,6 +14,46 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final AuthService _authService = AuthService();
   bool _isLoading = false;
 
+  // 缓存样式对象
+  late final ButtonStyle _buttonStyle;
+  late final TextStyle _titleStyle;
+  late final TextStyle _descriptionStyle;
+  late final InputDecoration _inputDecoration;
+
+  @override
+  void initState() {
+    super.initState();
+    // 预先创建样式对象
+    _buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: Colors.blue.shade700,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+    
+    _titleStyle = TextStyle(
+      fontSize: 28,
+      fontWeight: FontWeight.bold,
+      color: Colors.blue.shade700,
+    );
+    
+    _descriptionStyle = TextStyle(
+      fontSize: 16,
+      color: Colors.grey.shade600,
+    );
+    
+    _inputDecoration = InputDecoration(
+      labelText: '邮箱地址',
+      prefixIcon: const Icon(Icons.email),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+    );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -71,82 +111,62 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.lock_reset,
-                    size: 80,
-                    color: Colors.blue.shade700,
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    '找回密码',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+          child: RepaintBoundary(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock_reset,
+                      size: 80,
                       color: Colors.blue.shade700,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '请输入您的邮箱地址，我们将发送重置密码链接到您的邮箱',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
+                    const SizedBox(height: 32),
+                    Text(
+                      '找回密码',
+                      style: _titleStyle,
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: '邮箱地址',
-                      prefixIcon: const Icon(Icons.email),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 16),
+                    Text(
+                      '请输入您的邮箱地址，我们将发送重置密码链接到您的邮箱',
+                      textAlign: TextAlign.center,
+                      style: _descriptionStyle,
+                    ),
+                    const SizedBox(height: 32),
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: _inputDecoration,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return '请输入邮箱地址';
+                        }
+                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                            .hasMatch(value)) {
+                          return '请输入有效的邮箱地址';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _resetPassword,
+                        style: _buttonStyle,
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                '发送重置邮件',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
                       ),
-                      filled: true,
-                      fillColor: Colors.white,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return '请输入邮箱地址';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(value)) {
-                        return '请输入有效的邮箱地址';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _resetPassword,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              '发送重置邮件',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                  ),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -164,6 +184,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
       ),
+      )
     );
   }
 }
