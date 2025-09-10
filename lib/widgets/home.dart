@@ -10,6 +10,7 @@ import '../services/auth_service.dart'; // 使用auth_service_simple.dart
 import '../pages/friends_page.dart'; // <-- 1. 导入我们之后会创建的好友页面
 import '../services/socket_service.dart'; // <-- 2. 导入Socket服务
 import 'setting.dart';
+import '../services/audio_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,6 +29,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadAuthDataAndConnectSocket(); // <-- 4. 调用新的初始化方法
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
   }
 
   @override

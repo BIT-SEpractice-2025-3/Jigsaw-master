@@ -3,6 +3,7 @@
 // ->其他游戏设置
 
 import 'package:flutter/material.dart';
+import '../services/audio_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -20,6 +21,10 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
   }
 
   Future<void> _loadSettings() async {
