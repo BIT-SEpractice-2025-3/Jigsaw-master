@@ -1,10 +1,11 @@
-// lib/pages/friends_page.dart
+// lib/pages/friends_page.dart (完整代码)
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/friend.dart';
 import '../services/friend_service.dart';
 import '../services/socket_service.dart';
+import 'match_history_page.dart'; // <-- 1. 导入新页面
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -53,8 +54,21 @@ class _FriendsPageState extends State<FriendsPage>
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text('好友对战中心'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        // ▼▼▼ 2. 在这里添加按钮 ▼▼▼
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: '对战记录',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const MatchHistoryPage()),
+              );
+            },
+          ),
+        ],
+        // ▲▲▲ 修改结束 ▲▲▲
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

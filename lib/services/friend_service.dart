@@ -1,10 +1,12 @@
-// lib/services/friend_service.dart
+// lib/services/friend_service.dart (完整代码)
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import '../models/friend.dart';
 import '../config/app_config.dart';
+import '../models/match_history.dart'; // <-- 新增的 import
+
 class FriendService {
   // 【已对齐】使用你 AuthService 中提供的 IP 地址
   static const String _baseUrl = '${AppConfig.serverUrl}/api';
@@ -116,4 +118,26 @@ class FriendService {
       throw Exception(error['error'] ?? '回应好友请求失败');
     }
   }
+
+  // ▼▼▼ 新增的方法 ▼▼▼
+  /// 获取对战历史记录
+  Future<List<MatchHistory>> getMatchHistory() async {
+    final token = _getToken();
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/matches/history'), // <-- 新的 API 路由
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((json) => MatchHistory.fromJson(json)).toList();
+    } else {
+      print('Failed to load match history: ${response.body}');
+      throw Exception('加载对战记录失败');
+    }
+  }
+// ▲▲▲ 新增结束 ▲▲▲
 }
