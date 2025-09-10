@@ -315,6 +315,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
   }
 
   void _showCompletionDialog() {
+    // 播放胜利音效
+    AudioService().playSuccessSound();
+
     // 游戏完成，删除服务器存档
     final authService = AuthService();
     if (authService.isLoggedIn) {
@@ -1293,9 +1296,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
             _shouldHighlightTarget = newShouldHighlight;
           });
 
-          if (newShouldHighlight &&
-              !oldShouldHighlight &&
-              !_snapPlayedDuringDrag) {
+          if (newShouldHighlight && !oldShouldHighlight) {
             _onPieceSnapped();
             _snapPlayedDuringDrag = true;
           }

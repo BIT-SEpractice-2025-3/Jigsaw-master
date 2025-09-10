@@ -25,6 +25,12 @@ class _HomePageState extends State<HomePage> {
   bool _isUserBarExpanded = false;
   Timer? _collapseTimer;
 
+  // 新增：悬停状态变量
+  bool _isSettingsHovered = false;
+  bool _isRankingHovered = false;
+  bool _isAchievementsHovered = false;
+  bool _isUserBarHovered = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,21 +81,35 @@ class _HomePageState extends State<HomePage> {
               Positioned(
                 top: 40,
                 right: 20,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SettingsPage(),
-                      ),
-                    );
+                child: MouseRegion(
+                  onEnter: (_) {
+                    setState(() {
+                      _isSettingsHovered = true;
+                    });
                   },
-                  icon: const Icon(
-                    Icons.settings,
-                    color: Color(0xFF6A5ACD),
-                    size: 28,
+                  onExit: (_) {
+                    setState(() {
+                      _isSettingsHovered = false;
+                    });
+                  },
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsPage(),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.settings,
+                      color: _isSettingsHovered
+                          ? const Color(0xFF6A5ACD)
+                          : Colors.grey,
+                      size: 28,
+                    ),
+                    tooltip: '设置',
                   ),
-                  tooltip: '设置',
                 ),
               ),
 
@@ -97,21 +117,35 @@ class _HomePageState extends State<HomePage> {
               Positioned(
                 top: 40,
                 right: 100,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RankingPage(),
-                      ),
-                    );
+                child: MouseRegion(
+                  onEnter: (_) {
+                    setState(() {
+                      _isRankingHovered = true;
+                    });
                   },
-                  icon: const Icon(
-                    Icons.leaderboard_rounded,
-                    color: Color(0xFFE91E63),
-                    size: 28,
+                  onExit: (_) {
+                    setState(() {
+                      _isRankingHovered = false;
+                    });
+                  },
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RankingPage(),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.leaderboard_rounded,
+                      color: _isRankingHovered
+                          ? const Color(0xFFE91E63)
+                          : Colors.grey,
+                      size: 28,
+                    ),
+                    tooltip: '排行榜',
                   ),
-                  tooltip: '排行榜',
                 ),
               ),
 
@@ -119,21 +153,35 @@ class _HomePageState extends State<HomePage> {
               Positioned(
                 top: 40,
                 right: 60,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AchievementsPage(),
-                      ),
-                    );
+                child: MouseRegion(
+                  onEnter: (_) {
+                    setState(() {
+                      _isAchievementsHovered = true;
+                    });
                   },
-                  icon: const Icon(
-                    Icons.emoji_events,
-                    color: Color(0xFFFF9800),
-                    size: 28,
+                  onExit: (_) {
+                    setState(() {
+                      _isAchievementsHovered = false;
+                    });
+                  },
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AchievementsPage(),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.emoji_events,
+                      color: _isAchievementsHovered
+                          ? const Color(0xFFFF9800)
+                          : Colors.grey,
+                      size: 28,
+                    ),
+                    tooltip: '成就',
                   ),
-                  tooltip: '成就',
                 ),
               ),
 
@@ -328,30 +376,50 @@ class _HomePageState extends State<HomePage> {
   Widget _buildUserStatusBar() {
     if (!_isUserBarExpanded) {
       // 收起状态：只显示图标
-      return GestureDetector(
-        onTap: _toggleUserBar,
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: const Color(0xFF6A5ACD).withOpacity(0.2),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+      return MouseRegion(
+        onEnter: (_) {
+          setState(() {
+            _isUserBarHovered = true;
+          });
+        },
+        onExit: (_) {
+          setState(() {
+            _isUserBarHovered = false;
+          });
+        },
+        child: GestureDetector(
+          onTap: _toggleUserBar,
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _isUserBarHovered
+                  ? const Color(0xFF6A5ACD).withOpacity(0.1)
+                  : Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _isUserBarHovered
+                    ? const Color(0xFF6A5ACD)
+                    : const Color(0xFF6A5ACD).withOpacity(0.2),
+                width: _isUserBarHovered ? 2 : 1,
               ),
-            ],
-          ),
-          child: Icon(
-            _authService.isLoggedIn ? Icons.person : Icons.person_outline,
-            color: const Color(0xFF6A5ACD),
-            size: 24,
+              boxShadow: [
+                BoxShadow(
+                  color: _isUserBarHovered
+                      ? Colors.black.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.05),
+                  blurRadius: _isUserBarHovered ? 12 : 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              _authService.isLoggedIn ? Icons.person : Icons.person_outline,
+              color: _isUserBarHovered
+                  ? const Color(0xFF6A5ACD)
+                  : const Color(0xFF6A5ACD),
+              size: 24,
+            ),
           ),
         ),
       );
@@ -585,21 +653,42 @@ class _HomePageState extends State<HomePage> {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return Material(
-      borderRadius: BorderRadius.circular(20),
-      elevation: 4,
-      shadowColor: color.withOpacity(0.3),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-            width: 1,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.grey[800],
+          elevation: 4,
+          shadowColor: color.withOpacity(0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: color.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        ).copyWith(
+          backgroundColor: MaterialStateProperty.resolveWith<Color>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.hovered)) {
+                return color.withOpacity(0.1); // 悬停时变深
+              }
+              return Colors.white; // 默认颜色
+            },
+          ),
+          elevation: MaterialStateProperty.resolveWith<double>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.hovered)) {
+                return 0; // 悬停时增加阴影
+              }
+              return 4; // 默认阴影
+            },
           ),
         ),
+        onPressed: onPressed,
         child: ListTile(
-          onTap: onPressed,
           leading: Container(
             width: 50,
             height: 50,
@@ -641,8 +730,7 @@ class _HomePageState extends State<HomePage> {
               size: 16,
             ),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          contentPadding: EdgeInsets.zero,
         ),
       ),
     );

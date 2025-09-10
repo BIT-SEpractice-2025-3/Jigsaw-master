@@ -32,7 +32,7 @@ class AudioService {
       if (state == PlayerState.completed || state == PlayerState.stopped) {
         _bgmPlaying = false;
         // 可选：自动重启
-        // playBgm();
+        playBgm();
       }
     });
   }
@@ -106,13 +106,14 @@ class AudioService {
     }
   }
 
-  Future<void> _playSfx(String assetPath) async {
+  Future<void> _playSfx(String assetPath, [double? volume]) async {
     await _init();
+    final effectiveVolume = volume ?? sfxVolume;
     try {
       final player = _sfxPlayers[_sfxIndex % _sfxPlayers.length];
       _sfxIndex++;
       await player.stop();
-      await player.setVolume(sfxVolume);
+      await player.setVolume(effectiveVolume);
       print('[AudioService] try play SFX AssetSource: $assetPath');
       await player.play(AssetSource(assetPath));
       print('[AudioService] SFX played via AssetSource');
@@ -124,7 +125,7 @@ class AudioService {
         final player = _sfxPlayers[_sfxIndex % _sfxPlayers.length];
         _sfxIndex++;
         await player.stop();
-        await player.setVolume(sfxVolume);
+        await player.setVolume(effectiveVolume);
         await player.play(BytesSource(bytes));
         print('[AudioService] SFX played via BytesSource');
       } catch (e2) {
@@ -145,6 +146,10 @@ class AudioService {
     await _playSfx(assetPath);
   }
 
+  Future<void> playSuccessSound() async {
+    await _playSfx('assets/audio/success_sound.wav', sfxVolume * 0.1);
+  }
+
   Future<void> dispose() async {
     try {
       await _bgmPlayer.dispose();
@@ -157,6 +162,3 @@ class AudioService {
     }
   }
 }
-
-
-

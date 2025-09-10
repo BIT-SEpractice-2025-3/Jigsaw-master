@@ -119,7 +119,7 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
       setState(() {
         _errorMessage = "发生错误: $e";
       });
-    } finally { 
+    } finally {
       setState(() {
         _isGenerating = false;
       });
@@ -544,21 +544,43 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
     required VoidCallback onPressed,
     bool isLoading = false,
   }) {
-    return Material(
-      borderRadius: BorderRadius.circular(20),
-      elevation: 4,
-      shadowColor: Color.fromRGBO(color.red, color.green, color.blue, 0.3),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Color.fromRGBO(color.red, color.green, color.blue, 0.2),
-            width: 1,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.grey[800],
+          elevation: 4,
+          shadowColor: Color.fromRGBO(color.red, color.green, color.blue, 0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Color.fromRGBO(color.red, color.green, color.blue, 0.2),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        ).copyWith(
+          backgroundColor: MaterialStateProperty.resolveWith<Color>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.hovered)) {
+                return Color.fromRGBO(
+                    color.red, color.green, color.blue, 0.1); // 悬停时变深
+              }
+              return Colors.white; // 默认颜色
+            },
+          ),
+          elevation: MaterialStateProperty.resolveWith<double>( 
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.hovered)) {
+                return 0; // 悬停时增加阴影
+              }
+              return 4; // 默认阴影
+            },
           ),
         ),
+        onPressed: isLoading ? null : onPressed,
         child: ListTile(
-          onTap: isLoading ? null : onPressed,
           leading: Container(
             width: 50,
             height: 50,
@@ -602,8 +624,7 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
               size: 16,
             ),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          contentPadding: EdgeInsets.zero,
         ),
       ),
     );

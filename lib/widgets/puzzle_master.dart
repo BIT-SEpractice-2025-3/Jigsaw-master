@@ -420,6 +420,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：显示游戏完成对话框
   void _showCompletionDialog() {
+    // 播放胜利音效
+    AudioService().playSuccessSound();
+
     // 游戏完成，删除服务器存档
     final authService = AuthService();
     if (authService.isLoggedIn) {
@@ -677,6 +680,8 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             setState(() {
               _gameService.snapPieces();
             });
+            // 播放吸附音效
+            AudioService().playSnapSound();
           } else {
             // 如果没有发生吸附，则执行角度对齐
             setState(() {
