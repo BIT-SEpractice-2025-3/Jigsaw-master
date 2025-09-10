@@ -68,7 +68,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   final PuzzleGameService _gameService = PuzzleGameService();
   final PuzzleGenerateService _generateService = PuzzleGenerateService();
 
-  int? _selectedGroupId;
+  int _selectedGroupId = -1;
   bool _gameInitialized = false;
   SnapTarget? _snapTarget;
   Offset? _lastFocalPoint;
@@ -336,9 +336,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                 return GestureDetector(
                   onTap: () {
                     // 当点击背景时取消选择
-                    if (_selectedGroupId != null) {
+                    if (_selectedGroupId != -1) {
                       setState(() {
-                        _selectedGroupId = null;
+                        _selectedGroupId = -1;
                       });
                     }
                   },
@@ -511,7 +511,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     _gameService.resetMasterGame();
     setState(() {
       _gameInitialized = false;
-      _selectedGroupId = null;
+      _selectedGroupId = -1;
       _snapTarget = null;
       _currentScore = 0;
       _currentTime = 0;
@@ -574,9 +574,30 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       });
     }
   }
+  var _lastBroughtToFrontGroupId;
+  void _bringGroupToFront(int groupId) {
+    if (_lastBroughtToFrontGroupId == groupId) {
+      return;
+    }
+    final groupPieces = _gameService.masterPieces
+        .where((p) => p.group == groupId)
+        .toList();
+
+    if (groupPieces.isEmpty) return;
+
+    _gameService.masterPieces.removeWhere((p) => p.group == groupId);
+
+    _gameService.masterPieces.addAll(groupPieces);
+
+    _lastBroughtToFrontGroupId = groupId;
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   Widget _buildDraggablePiece(MasterPieceState pieceState) {
     final piece = pieceState.piece;
+    var currentRotation = pieceState.rotation;
     final pieceWidget = CustomPaint(
       painter: _PuzzlePiecePainter(
         piece: piece,
@@ -594,30 +615,32 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         ..scale(pieceState.scale)
         ..translate(-piece.pivot.dx, -piece.pivot.dy),
       child: GestureDetector(
-        onTap: () {
+        onTapDown: (details) {
           setState(() {
             // 当被点击时，选中整个分组
+            currentRotation = pieceState.rotation;
+            _bringGroupToFront(pieceState.group);
             _selectedGroupId = pieceState.group;
           });
         },
         onScaleStart: (details) {
           // 如果手势在一个拼图块上开始，则选中其所在的分组
-          if (_selectedGroupId != pieceState.group) {
-            setState(() {
-              _selectedGroupId = pieceState.group;
-            });
-          }
+          setState(() {
+            currentRotation = pieceState.rotation;
+            _bringGroupToFront(pieceState.group);
+            _selectedGroupId = pieceState.group;
+          });
           _lastFocalPoint = details.focalPoint;
         },
         onScaleUpdate: (details) {
-          if (_selectedGroupId != pieceState.group) return;
+          if (_selectedGroupId == -1) return;
           if (_lastFocalPoint == null) return;
 
           final focalPointDelta = details.focalPoint - _lastFocalPoint!;
           _lastFocalPoint = details.focalPoint;
 
           setState(() {
-            final groupID = pieceState.group;
+            final groupID = _selectedGroupId;
             final groupPieces = _gameService.masterPieces
                 .where((p) => p.group == groupID)
                 .toList();
@@ -638,7 +661,8 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         },
         onScaleEnd: (details) {
           _lastFocalPoint = null;
-          if (_selectedGroupId != pieceState.group) return;
+          print(_selectedGroupId);
+          if (_selectedGroupId == -1) return;
 
           // 优先处理拼图块之间的吸附
           if (_snapTarget != null &&
@@ -649,8 +673,8 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
           } else {
             // 如果没有发生吸附，则执行角度对齐
             setState(() {
-              final groupID = pieceState.group;
-              final currentRotation = pieceState.rotation;
+              final groupID = _selectedGroupId;
+              // final currentRotation = pieceState.rotation;
               const baseAngle = pi / 4; // 45度
 
               // 计算最接近的45度倍数角度
@@ -661,7 +685,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
               final rotationDelta = snappedRotation - currentRotation;
 
               // 如果角度差很小，则无需旋转，避免不必要的重绘
-              if (rotationDelta.abs() > 0.001) {
+              if (rotationDelta.abs() > 0.0001) {
                 _rotateGroup(groupID, rotationDelta);
               }
             });
@@ -675,7 +699,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 在 _PuzzleMasterPageState 类中，用下面的代码替换整个 _buildGroupControls 方法
   Widget _buildGroupControls() {
-    if (_selectedGroupId == null) {
+    if (_selectedGroupId == -1) {
       return const SizedBox.shrink();
     }
 
