@@ -336,6 +336,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
     'social': '社交'
   };
 
+  bool _isStatsCardHovered = false;
+  int _hoveredCategoryIndex = -1;
+  String? _hoveredAchievementId;
+  bool _isLoginButtonHovered = false;
+
   @override
   void initState() {
     super.initState();
@@ -550,96 +555,102 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   Widget _buildStatsCard() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '${_getCompletedCount()}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A5ACD),
-                  ),
-                ),
-                const Text(
-                  '已完成',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isStatsCardHovered = true),
+      onExit: (_) => setState(() => _isStatsCardHovered = false),
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: _isStatsCardHovered
+                  ? Colors.black.withOpacity(0.15)
+                  : Colors.black.withOpacity(0.05),
+              blurRadius: _isStatsCardHovered ? 15 : 10,
+              offset: const Offset(0, 4),
             ),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey.shade300,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '${_achievements.length}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D2B55),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    '${_getCompletedCount()}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6A5ACD),
+                    ),
                   ),
-                ),
-                const Text(
-                  '总成就',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
+                  const Text(
+                    '已完成',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey.shade300,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '${_getTotalPoints()}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFF9800),
-                  ),
-                ),
-                const Text(
-                  '积分',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.grey.shade300,
             ),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    '${_achievements.length}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D2B55),
+                    ),
+                  ),
+                  const Text(
+                    '总成就',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.grey.shade300,
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    '${_getTotalPoints()}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFF9800),
+                    ),
+                  ),
+                  const Text(
+                    '积分',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -654,29 +665,38 @@ class _AchievementsPageState extends State<AchievementsPage> {
         itemBuilder: (context, index) {
           final category = _categories[index];
           final isSelected = category == _selectedCategory;
+          final isHovered = _hoveredCategoryIndex == index;
 
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategory = category;
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF6A5ACD) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFF6A5ACD).withOpacity(0.3),
+          return MouseRegion(
+            onEnter: (_) => setState(() => _hoveredCategoryIndex = index),
+            onExit: (_) => setState(() => _hoveredCategoryIndex = -1),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedCategory = category;
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF6A5ACD)
+                      : (isHovered ? Colors.grey.shade100 : Colors.white),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF6A5ACD).withOpacity(0.3),
+                  ),
                 ),
-              ),
-              child: Center(
-                child: Text(
-                  _categoryNames[category] ?? category,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF6A5ACD),
-                    fontWeight: FontWeight.w600,
+                child: Center(
+                  child: Text(
+                    _categoryNames[category] ?? category,
+                    style: TextStyle(
+                      color:
+                          isSelected ? Colors.white : const Color(0xFF6A5ACD),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -719,128 +739,135 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   Widget _buildAchievementCard(Achievement achievement, bool isCompleted) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isCompleted
-              ? const Color(0xFF6A5ACD).withOpacity(0.3)
-              : Colors.grey.shade200,
-          width: isCompleted ? 2 : 1,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredAchievementId = achievement.id),
+      onExit: (_) => setState(() => _hoveredAchievementId = null),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCompleted
+                ? const Color(0xFF6A5ACD).withOpacity(0.3)
+                : Colors.grey.shade200,
+            width: isCompleted ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _hoveredAchievementId == achievement.id
+                  ? Colors.black.withOpacity(0.15)
+                  : Colors.black.withOpacity(0.05),
+              blurRadius: _hoveredAchievementId == achievement.id ? 12 : 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // 成就图标
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: isCompleted
-                  ? const Color(0xFF6A5ACD).withOpacity(0.15)
-                  : Colors.grey.shade100,
-              shape: BoxShape.circle,
+        child: Row(
+          children: [
+            // 成就图标
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: isCompleted
+                    ? const Color(0xFF6A5ACD).withOpacity(0.15)
+                    : Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getIconData(achievement.icon),
+                color: isCompleted
+                    ? const Color(0xFF6A5ACD)
+                    : Colors.grey.shade400,
+                size: 24,
+              ),
             ),
-            child: Icon(
-              _getIconData(achievement.icon),
-              color:
-                  isCompleted ? const Color(0xFF6A5ACD) : Colors.grey.shade400,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
+            const SizedBox(width: 16),
 
-          // 成就信息
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  achievement.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isCompleted
-                        ? const Color(0xFF2D2B55)
-                        : Colors.grey.shade600,
+            // 成就信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    achievement.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isCompleted
+                          ? const Color(0xFF2D2B55)
+                          : Colors.grey.shade600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  achievement.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
+                  const SizedBox(height: 4),
+                  Text(
+                    achievement.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.stars,
+                        size: 16,
+                        color: Colors.amber.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${achievement.rewardPoints} 积分',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // 完成状态
+            if (isCompleted)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6A5ACD),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 8),
-                Row(
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.stars,
+                      Icons.check,
                       size: 16,
-                      color: Colors.amber.shade600,
+                      color: Colors.white,
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(
-                      '${achievement.rewardPoints} 积分',
+                      '已完成',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.amber.shade700,
+                        color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // 完成状态
-          if (isCompleted)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6A5ACD),
-                borderRadius: BorderRadius.circular(12),
+              )
+            else
+              Icon(
+                Icons.lock,
+                color: Colors.grey.shade400,
+                size: 20,
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    '已完成',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            Icon(
-              Icons.lock,
-              color: Colors.grey.shade400,
-              size: 20,
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -873,22 +900,30 @@ class _AchievementsPageState extends State<AchievementsPage> {
             ),
           ),
           const SizedBox(height: 30),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6A5ACD),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+          MouseRegion(
+            onEnter: (_) => setState(() => _isLoginButtonHovered = true),
+            onExit: (_) => setState(() => _isLoginButtonHovered = false),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isLoginButtonHovered
+                    ? const Color(0xFF5A4FCF)
+                    : const Color(0xFF6A5ACD),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: _isLoginButtonHovered ? 8 : 2,
               ),
-            ),
-            child: const Text(
-              '返回主页登录',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+              child: const Text(
+                '返回主页登录',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

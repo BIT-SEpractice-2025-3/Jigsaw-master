@@ -115,12 +115,20 @@ class _RankingPageState extends State<RankingPage> {
                 style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                 textAlign: TextAlign.center),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _loadLeaderboard,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE91E63),
-                  foregroundColor: Colors.white),
-              child: const Text('重试'),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                child: ElevatedButton(
+                  onPressed: _loadLeaderboard,
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE91E63),
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      shadowColor: const Color(0xFFE91E63).withOpacity(0.3)),
+                  child: const Text('重试'),
+                ),
+              ),
             ),
           ],
         ),
@@ -175,83 +183,109 @@ class _RankingPageState extends State<RankingPage> {
         rankIcon = Icons.emoji_events_outlined;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: rank <= 3
-              ? LinearGradient(
-              colors: [rankColor.withOpacity(0.1), Colors.white])
-              : null,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                    color: rankColor.withOpacity(0.2), shape: BoxShape.circle),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(rankIcon, color: rankColor, size: 20),
-                    Text('$rank',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: rankColor)),
-                  ],
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: rank <= 3
+                  ? LinearGradient(
+                      colors: [rankColor.withOpacity(0.1), Colors.white])
+                  : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                hoverColor: rankColor.withOpacity(0.05),
+                splashColor: rankColor.withOpacity(0.1),
+                onTap: () {
+                  // 可以在这里添加点击事件
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                            color: rankColor.withOpacity(0.2),
+                            shape: BoxShape.circle),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(rankIcon, color: rankColor, size: 20),
+                            Text('$rank',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: rankColor)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(score['username'] ?? '未知用户',
+                                style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2D2B55))),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.timer,
+                                    size: 14, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                Text(_formatTime(score['time'] ?? 0),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600)),
+                                const SizedBox(width: 12),
+                                Icon(Icons.stars,
+                                    size: 14, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                Text(
+                                    _getDifficultyText(
+                                        score['difficulty'] ?? 'easy'),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFE91E63).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Text('${score['score'] ?? 0}',
+                            style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFE91E63))),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(score['username'] ?? '未知用户',
-                        style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D2B55))),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.timer,
-                            size: 14, color: Colors.grey.shade600),
-                        const SizedBox(width: 4),
-                        Text(_formatTime(score['time'] ?? 0),
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600)),
-                        const SizedBox(width: 12),
-                        Icon(Icons.stars,
-                            size: 14, color: Colors.grey.shade600),
-                        const SizedBox(width: 4),
-                        Text(_getDifficultyText(score['difficulty'] ?? 'easy'),
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFE91E63).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text('${score['score'] ?? 0}',
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFE91E63))),
-              ),
-            ],
+            ),
           ),
         ),
       ),
