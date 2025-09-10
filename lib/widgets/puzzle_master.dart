@@ -154,7 +154,8 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _isGameRunning
                       ? Colors.green.shade100
@@ -286,7 +287,8 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
                 // 分数显示
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -426,8 +428,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     // 游戏完成，删除服务器存档
     final authService = AuthService();
     if (authService.isLoggedIn) {
-      authService
-          .deleteSave('master', widget.difficulty);
+      authService.deleteSave('master', widget.difficulty);
     }
 
     showDialog(
@@ -605,14 +606,14 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       }
     }
   }
+
   var _lastBroughtToFrontGroupId;
   void _bringGroupToFront(int groupId) {
     if (_lastBroughtToFrontGroupId == groupId) {
       return;
     }
-    final groupPieces = _gameService.masterPieces
-        .where((p) => p.group == groupId)
-        .toList();
+    final groupPieces =
+        _gameService.masterPieces.where((p) => p.group == groupId).toList();
 
     if (groupPieces.isEmpty) return;
 
@@ -636,7 +637,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         isSelected: _selectedGroupId == pieceState.group,
         snapTarget: _snapTarget,
       ),
-      size: piece.bounds.size,
+      size: piece.bounds.size * 100,
     );
 
     return Transform(
@@ -804,7 +805,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.85),
                 shape: BoxShape.circle,
-                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 4)
+                ],
               ),
               child: const Icon(Icons.rotate_left,
                   color: Colors.blue, size: iconSize),
@@ -830,7 +833,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.85),
                 shape: BoxShape.circle,
-                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 4)
+                ],
               ),
               child: const Icon(Icons.rotate_right,
                   color: Colors.blue, size: iconSize),
@@ -872,8 +877,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         } else if (shouldLoadSave == false) {
           try {
             await authService.deleteSave('master', widget.difficulty);
-          } catch (e) {
-          }
+          } catch (e) {}
         }
       }
     }
@@ -1007,7 +1011,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         );
       }
     } catch (e) {
-
       // 加载失败时显示错误提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

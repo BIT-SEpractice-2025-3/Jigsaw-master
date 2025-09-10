@@ -3,5 +3,5 @@ class AppConfig {
   AppConfig._();
 
   ///  后端服务器的IP地址和端口号
-  static const String serverUrl = 'http://localhost:5000';
+  static const String serverUrl = 'http://10.194.103.249:5000';
 }

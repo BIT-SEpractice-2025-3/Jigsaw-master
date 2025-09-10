@@ -110,6 +110,13 @@ class PuzzleGameService {
     _masterScoreController.add(_masterScore);
     _timerController.add(_elapsedSeconds);
 
+    // 根据原图大小和画布大小计算缩放比例
+    final double originalImageSize = pieces.isNotEmpty
+        ? pieces.first.pieceSize * sqrt(pieces.length)
+        : 400.0;
+    final double targetScale =
+        min(boardSize.width, boardSize.height) * 0.6 / originalImageSize;
+
     for (int i = 0; i < pieces.length; i++) {
       final piece = pieces[i];
       masterPieces.add(MasterPieceState(
@@ -119,7 +126,7 @@ class PuzzleGameService {
           random.nextDouble() * boardSize.width * 0.92 + 5,
           random.nextDouble() * boardSize.height * 0.75 + 35,
         ),
-        scale: 1.2 / sqrt(pieces.length),
+        scale: targetScale,
         // 随机角度
         rotation: random.nextDouble() * 2 * pi,
         // 初始时，每个拼图块都在自己的组里
