@@ -22,9 +22,9 @@ socketio = SocketIO(app, cors_allowed_origins="*") # 允许SocketIO跨域
 # 数据库配置
 DB_CONFIG = {
     'host': '127.0.0.1',
-    'port': 29871,
-    'user': 'dev_user',
-    'password': 'devLhx050918@',
+    'port': 3306,
+    'user': 'root',
+    'password': '123dsk',
     'database': 'jigsaw',
     'charset': 'utf8mb4'
 }

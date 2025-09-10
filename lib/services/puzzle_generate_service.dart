@@ -19,15 +19,41 @@ class PuzzleGenerateService {
   // 新增：提供 lastGraph 的 getter
   PuzzleGraph? get lastGraph => _lastGraph;
 
+  // 新增：可用的默认图片列表
+  static const List<String> _defaultImages = [
+    'assets/images/1.jpg',
+    'assets/images/2.jpg',
+    'assets/images/3.jpg',
+    'assets/images/4.jpg',
+    'assets/images/5.jpg',
+    'assets/images/6.jpg',
+    'assets/images/7.jpg',
+    'assets/images/8.jpg',
+    'assets/images/9.jpg',
+    'assets/images/10.jpg',
+    'assets/images/11.jpg',
+  ];
+
+  // 新增：随机选择默认图片
+  String getRandomDefaultImage() {
+    final random = Random();
+    return _defaultImages[random.nextInt(_defaultImages.length)];
+  }
+
   /// 公开的API：根据图片源和难度生成拼图块列表
   Future<List<PuzzlePiece>> generatePuzzle(
       String imageSource, int difficulty) async {
-    // 智能加载图片
+    // 智能加载图片 - 如果是默认图片，则随机选择
+    String actualImageSource = imageSource;
+    if (imageSource == 'assets/images/default_puzzle.jpg') {
+      actualImageSource = getRandomDefaultImage();
+    }
+
     ui.Image image;
-    if (imageSource.startsWith('assets/')) {
-      image = await _loadImageFromAsset(imageSource);
+    if (actualImageSource.startsWith('assets/')) {
+      image = await _loadImageFromAsset(actualImageSource);
     } else {
-      image = await _loadImageFromFile(imageSource);
+      image = await _loadImageFromFile(actualImageSource);
     }
 
     // 新增：将图片以中心为基准裁剪为正方形
@@ -48,13 +74,6 @@ class PuzzleGenerateService {
     // 调用核心的图片切割函数
     return _sliceImage(image, gridSize, _lastGraph!);
   }
-  Future<ui.Image> _createPlaceholderImage(int width, int height) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    final paint = Paint()..color = Colors.grey.shade300;
-    canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), paint);
-    return await recorder.endRecording().toImage(width, height);
-  }
 
   // 新增：将图片裁剪为正方形的辅助函数
   Future<ui.Image> _cropToSquare(ui.Image image) async {
@@ -62,8 +81,10 @@ class PuzzleGenerateService {
     final srcLeft = (image.width - sideLength) / 2.0;
     final srcTop = (image.height - sideLength) / 2.0;
 
-    final srcRect = Rect.fromLTWH(srcLeft, srcTop, sideLength.toDouble(), sideLength.toDouble());
-    final dstRect = Rect.fromLTWH(0, 0, sideLength.toDouble(), sideLength.toDouble());
+    final srcRect = Rect.fromLTWH(
+        srcLeft, srcTop, sideLength.toDouble(), sideLength.toDouble());
+    final dstRect =
+        Rect.fromLTWH(0, 0, sideLength.toDouble(), sideLength.toDouble());
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, dstRect); // 使用dstRect优化画布大小
@@ -76,7 +97,8 @@ class PuzzleGenerateService {
   }
 
   static PuzzleEdge? _findEdge(PuzzleGraph graph, int node1Id, int node2Id) {
-    if (!graph.nodes.containsKey(node1Id) || !graph.nodes.containsKey(node2Id)) {
+    if (!graph.nodes.containsKey(node1Id) ||
+        !graph.nodes.containsKey(node2Id)) {
       return null;
     }
     for (var edgeId in graph.nodes[node1Id]!.neighborEdges) {
@@ -118,12 +140,17 @@ class PuzzleGenerateService {
   // 根据难度确定拼图网格大小
   int _getDifficultySize(int difficulty) {
     switch (difficulty) {
-      case 1: return 3; // 简单 3x3
-      case 2: return 4; // 中等 4x4
-      case 3: return 5; // 困难 5x5
-      default: return 3;
+      case 1:
+        return 3; // 简单 3x3
+      case 2:
+        return 4; // 中等 4x4
+      case 3:
+        return 5; // 困难 5x5
+      default:
+        return 3;
     }
   }
+
   static PuzzleGraph generateGridGraph(int rows, int cols) {
     final graph = PuzzleGraph();
     int edgeIdCounter = 0;
@@ -184,15 +211,16 @@ class PuzzleGenerateService {
 
     return graph;
   }
+
   /// @param length 这条边的直线长度。
   /// @param bumpHeight 凸起/凹陷的高度。正值表示高度。
   /// @param isConvex 决定边缘是凸起还是凹陷。true为凸，false为凹。
   /// @return 返回一个描述边缘形状的 Path 对象。
   static Path generatePuzzleEdgePath(
-      double length,
-      double bumpHeight,
-      bool isConvex,
-      ) {
+    double length,
+    double bumpHeight,
+    bool isConvex,
+  ) {
     final path = Path();
 
     // 移动到路径的起点
@@ -213,16 +241,16 @@ class PuzzleGenerateService {
 
     // 从第一段直线末端到凸起的最高点
     path.cubicTo(
-      length * 0.40, 0,                     // 第1个控制点 (影响离开直线的弧度)
-      length * 0.35, sign * bumpHeight,     // 第2个控制点 (影响凸起的形状和高度)
-      length * 0.50, sign * bumpHeight,     // 曲线的终点 (即凸起的顶点)
+      length * 0.40, 0, // 第1个控制点 (影响离开直线的弧度)
+      length * 0.35, sign * bumpHeight, // 第2个控制点 (影响凸起的形状和高度)
+      length * 0.50, sign * bumpHeight, // 曲线的终点 (即凸起的顶点)
     );
 
     // 从凸起的最高点回到第二段直线
     path.cubicTo(
-      length * 0.65, sign * bumpHeight,     // 第3个控制点 (镜像于第2个控制点)
-      length * 0.60, 0,                     // 第4个控制点 (镜像于第1个控制点)
-      straightEnd, 0,                       // 曲线的终点 (回到主线上)
+      length * 0.65, sign * bumpHeight, // 第3个控制点 (镜像于第2个控制点)
+      length * 0.60, 0, // 第4个控制点 (镜像于第1个控制点)
+      straightEnd, 0, // 曲线的终点 (回到主线上)
     );
 
     // --- 绘制最后一段直线，直到边的终点 ---
@@ -230,8 +258,10 @@ class PuzzleGenerateService {
 
     return path;
   }
+
   // 将图片切割成网格状的拼图碎片
-  Future<List<PuzzlePiece>> _sliceImage(ui.Image image, int gridSize, PuzzleGraph graph) async {
+  Future<List<PuzzlePiece>> _sliceImage(
+      ui.Image image, int gridSize, PuzzleGraph graph) async {
     final pieces = <PuzzlePiece>[];
     // 修正：由于图片已被裁剪为正方形，宽度和高度相等。
     // 我们统一使用 sideLength 来避免混淆。
@@ -257,9 +287,18 @@ class PuzzleGenerateService {
       // --- 5. 在局部坐标系 (0,0) 组装拼图块的轮廓路径 ---
       final localPath = Path();
       // 新增：存储邻居信息
-      final Map<String, int?> neighbors = {'top': null, 'right': null, 'bottom': null, 'left': null};
-      final Map<String, bool?> edgeTypes = {'top': null, 'right': null, 'bottom': null, 'left': null};
-
+      final Map<String, int?> neighbors = {
+        'top': null,
+        'right': null,
+        'bottom': null,
+        'left': null
+      };
+      final Map<String, bool?> edgeTypes = {
+        'top': null,
+        'right': null,
+        'bottom': null,
+        'left': null
+      };
 
       // -- 上边 --
       final topNeighborId = (row - 1) * gridSize + col;
@@ -268,7 +307,9 @@ class PuzzleGenerateService {
         localPath.lineTo(pieceSize, 0);
       } else {
         neighbors['top'] = topNeighborId;
-        final isConvex = (topEdge.nodeA_id == node.id) ? topEdge.isConvexOnA : !topEdge.isConvexOnA;
+        final isConvex = (topEdge.nodeA_id == node.id)
+            ? topEdge.isConvexOnA
+            : !topEdge.isConvexOnA;
         edgeTypes['top'] = isConvex;
         final edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         localPath.addPath(edgePath, Offset.zero);
@@ -281,13 +322,16 @@ class PuzzleGenerateService {
         localPath.lineTo(pieceSize, pieceSize);
       } else {
         neighbors['right'] = rightNeighborId;
-        final isConvex = (rightEdge.nodeA_id == node.id) ? rightEdge.isConvexOnA : !rightEdge.isConvexOnA;
+        final isConvex = (rightEdge.nodeA_id == node.id)
+            ? rightEdge.isConvexOnA
+            : !rightEdge.isConvexOnA;
         edgeTypes['right'] = isConvex;
         var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
           ..translate(pieceSize, 0.0)
           ..rotateZ(pi / 2);
-        localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
+        localPath.extendWithPath(
+            edgePath.transform(matrix.storage), Offset.zero);
       }
 
       // -- 下边 --
@@ -297,13 +341,16 @@ class PuzzleGenerateService {
         localPath.lineTo(0, pieceSize);
       } else {
         neighbors['bottom'] = bottomNeighborId;
-        final isConvex = (bottomEdge.nodeA_id == node.id) ? bottomEdge.isConvexOnA : !bottomEdge.isConvexOnA;
+        final isConvex = (bottomEdge.nodeA_id == node.id)
+            ? bottomEdge.isConvexOnA
+            : !bottomEdge.isConvexOnA;
         edgeTypes['bottom'] = isConvex;
         var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
           ..translate(pieceSize, pieceSize)
           ..rotateZ(pi);
-        localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
+        localPath.extendWithPath(
+            edgePath.transform(matrix.storage), Offset.zero);
       }
 
       // -- 左边 --
@@ -313,13 +360,16 @@ class PuzzleGenerateService {
         localPath.lineTo(0, 0);
       } else {
         neighbors['left'] = leftNeighborId;
-        final isConvex = (leftEdge.nodeA_id == node.id) ? leftEdge.isConvexOnA : !leftEdge.isConvexOnA;
+        final isConvex = (leftEdge.nodeA_id == node.id)
+            ? leftEdge.isConvexOnA
+            : !leftEdge.isConvexOnA;
         edgeTypes['left'] = isConvex;
         var edgePath = generatePuzzleEdgePath(pieceSize, bumpSize, isConvex);
         final matrix = Matrix4.identity()
           ..translate(0.0, pieceSize)
           ..rotateZ(3 * pi / 2);
-        localPath.extendWithPath(edgePath.transform(matrix.storage), Offset.zero);
+        localPath.extendWithPath(
+            edgePath.transform(matrix.storage), Offset.zero);
       }
       localPath.close();
 
@@ -348,10 +398,8 @@ class PuzzleGenerateService {
       final uiBounds = shapePath.getBounds();
 
       // 拼图块在原图中的位置，使用其理想的物理中心。
-      final positionInOriginalImage = Offset(
-          idealOffsetX + pieceSize / 2,
-          idealOffsetY + pieceSize / 2
-      );
+      final positionInOriginalImage =
+          Offset(idealOffsetX + pieceSize / 2, idealOffsetY + pieceSize / 2);
 
       // 计算物理中心（旋转中心）在 pieceImage/shapePath 坐标系中的位置
       final pivotInShape = positionInOriginalImage - boundsForSlicing.topLeft;
@@ -372,5 +420,4 @@ class PuzzleGenerateService {
     }
     return pieces;
   }
-
 }
