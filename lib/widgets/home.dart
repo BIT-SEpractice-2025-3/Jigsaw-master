@@ -5,6 +5,7 @@ import 'diy.dart';
 import 'login_page.dart';
 import 'setting.dart';
 import '../services/auth_service.dart'; // 使用auth_service_simple.dart
+import '../services/audio_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,6 +21,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadAuthData();
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
   }
 
   Future<void> _loadAuthData() async {

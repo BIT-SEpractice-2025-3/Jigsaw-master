@@ -8,6 +8,7 @@ import 'package:vector_math/vector_math_64.dart' show Vector3;
 import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
 import '../services/auth_service.dart';
+import '../services/audio_service.dart';
 
 // Add MasterPieceData definition here since we're removing game_save_service.dart
 class MasterPieceData {
@@ -90,6 +91,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     super.initState();
     // 检查存档并初始化游戏
     _checkForSaveAndInitialize();
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
 
     // 监听吸附事件以更新UI
     _gameService.snapStream.listen((snapTarget) {

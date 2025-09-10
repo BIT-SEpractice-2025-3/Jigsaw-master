@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/audio_service.dart';
 
 class RankingPage extends StatefulWidget {
   const RankingPage({super.key});
@@ -18,6 +19,10 @@ class _RankingPageState extends State<RankingPage> {
   void initState() {
     super.initState();
     _loadLeaderboard();
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
   }
 
   @override

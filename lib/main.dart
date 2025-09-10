@@ -2,10 +2,12 @@
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'widgets/home.dart';
 import 'services/auth_service.dart';
+import 'services/audio_service.dart';// 导入音频
 import 'package:flutter/services.dart'; // 导入系统服务包
+import 'package:just_audio/just_audio.dart'; // 导入音频播放包
 
 // 应用程序入口点
-void main() {
+void main(){
   WidgetsFlutterBinding.ensureInitialized();
   //隐藏导航栏但允许上滑显示
   SystemChrome.setEnabledSystemUIMode(
