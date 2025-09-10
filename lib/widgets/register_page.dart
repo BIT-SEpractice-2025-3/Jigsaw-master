@@ -44,7 +44,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
         // 注册成功，显示消息并返回登录页面
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('注册成功！请登录您的账号'),
             backgroundColor: Colors.green,
           ),
@@ -73,7 +73,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('注册账号'),
+        title: const Text('注册账号'),
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
       ),
@@ -88,14 +88,14 @@ class _RegisterPageState extends State<RegisterPage> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Card(
                 elevation: 8,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Padding(
-                  padding: EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.all(32.0),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -106,7 +106,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           size: 80,
                           color: Colors.blue.shade700,
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         Text(
                           '创建账号',
                           style: TextStyle(
@@ -115,12 +115,12 @@ class _RegisterPageState extends State<RegisterPage> {
                             color: Colors.blue.shade700,
                           ),
                         ),
-                        SizedBox(height: 32),
+                        const SizedBox(height: 32),
                         TextFormField(
                           controller: _usernameController,
                           decoration: InputDecoration(
                             labelText: '用户名',
-                            prefixIcon: Icon(Icons.person),
+                            prefixIcon: const Icon(Icons.person),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -135,13 +135,13 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: '邮箱',
-                            prefixIcon: Icon(Icons.email),
+                            prefixIcon: const Icon(Icons.email),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -157,13 +157,13 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: '密码',
-                            prefixIcon: Icon(Icons.lock),
+                            prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
@@ -190,13 +190,13 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _confirmPasswordController,
                           obscureText: _obscureConfirmPassword,
                           decoration: InputDecoration(
                             labelText: '确认密码',
-                            prefixIcon: Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscureConfirmPassword
@@ -224,7 +224,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -238,8 +238,8 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                             ),
                             child: _isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
-                                : Text(
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Text(
                                     '注册',
                                     style: TextStyle(
                                         fontSize: 16,
@@ -247,7 +247,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           child: Text(

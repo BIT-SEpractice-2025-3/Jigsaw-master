@@ -1,11 +1,6 @@
-//难度选择
-//->游戏界面
-//->主页
-
 import 'package:flutter/material.dart';
 import 'puzzle.dart';
 import 'puzzle_master.dart';
-import 'ai_image_generator.dart';
 
 class GameSelectionPage extends StatelessWidget {
   final String? imagePath; // 添加图片路径参数

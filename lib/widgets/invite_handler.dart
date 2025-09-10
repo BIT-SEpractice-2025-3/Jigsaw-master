@@ -1,11 +1,8 @@
-// lib/widgets/invite_handler.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/socket_service.dart';
-import '../pages/puzzle_battle_page.dart'; // 我们之后会创建这个页面
+import '../widgets/puzzle_battle_page.dart'; // 我们之后会创建这个页面
 import '../models/match.dart';
-import '../services/auth_service.dart'; // 引入AuthService
 
 class InviteHandler extends StatefulWidget {
   final Widget child;
@@ -61,24 +58,24 @@ class _InviteHandlerState extends State<InviteHandler> {
           title: Row(
             children: [
               Icon(Icons.gamepad_rounded, color: Theme.of(context).primaryColor),
-              SizedBox(width: 8),
-              Text('对战邀请'),
+              const SizedBox(width: 8),
+              const Text('对战邀请'),
             ],
           ),
           content: Text(
             '${inviteData['challenger_username']} 邀请你进行一场对战!',
-            style: TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16),
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('残忍拒绝'),
+              child: const Text('残忍拒绝'),
               onPressed: () {
                 _socketService.respondToInvite(inviteData['match_id'], 'declined');
                 Navigator.of(dialogContext).pop();
               },
             ),
             ElevatedButton(
-              child: Text('接受挑战!'),
+              child: const Text('接受挑战!'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
@@ -152,9 +149,9 @@ class _InviteHandlerState extends State<InviteHandler> {
   void dispose() {
     // 理论上这个dispose永远不会被调用，因为InviteHandler是根组件
     // 但保留代码是一个好习惯
-    _newInviteSubscription?.cancel();
-    _matchStartedSubscription?.cancel();
-    _friendAcceptedSubscription?.cancel();
+    _newInviteSubscription.cancel();
+    _matchStartedSubscription.cancel();
+    _friendAcceptedSubscription.cancel();
     _listenersInitialized = false; // 在极少数情况下，如果它被销毁，允许下次重新初始化
     super.dispose();
   }

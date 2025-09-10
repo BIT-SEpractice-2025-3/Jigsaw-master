@@ -1,5 +1,3 @@
-// lib/models/friend.dart
-
 import 'package:flutter/material.dart';
 
 /// 好友模型，用于好友列表

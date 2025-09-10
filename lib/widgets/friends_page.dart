@@ -1,11 +1,9 @@
-// lib/pages/friends_page.dart (完整代码)
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/friend.dart';
 import '../services/friend_service.dart';
 import '../services/socket_service.dart';
-import 'match_history_page.dart'; // <-- 1. 导入新页面
+import '../widgets/match_history_page.dart'; // <-- 1. 导入新页面
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -215,29 +213,29 @@ class _FriendsPageState extends State<FriendsPage>
 
   // --- Tab 3: 添加好友 ---
   Widget _buildAddFriendTab() {
-    final TextEditingController _searchController = TextEditingController();
-    final ValueNotifier<List<SearchedUser>> _searchResults = ValueNotifier([]);
-    final ValueNotifier<bool> _isLoading = ValueNotifier(false);
+    final TextEditingController searchController = TextEditingController();
+    final ValueNotifier<List<SearchedUser>> searchResults = ValueNotifier([]);
+    final ValueNotifier<bool> isLoading = ValueNotifier(false);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
           TextField(
-            controller: _searchController,
+            controller: searchController,
             decoration: InputDecoration(
               labelText: '按用户名搜索',
               suffixIcon: IconButton(
                 icon: const Icon(Icons.search),
                 onPressed: () async {
-                  final query = _searchController.text.trim();
+                  final query = searchController.text.trim();
                   if (query.length < 2) return;
-                  _isLoading.value = true;
+                  isLoading.value = true;
                   try {
-                    _searchResults.value =
+                    searchResults.value =
                         await _friendService.searchUsers(query);
                   } finally {
-                    _isLoading.value = false;
+                    isLoading.value = false;
                   }
                 },
               ),
@@ -246,15 +244,17 @@ class _FriendsPageState extends State<FriendsPage>
           const SizedBox(height: 16),
           Expanded(
             child: ValueListenableBuilder<bool>(
-              valueListenable: _isLoading,
+              valueListenable: isLoading,
               builder: (context, isLoading, child) {
-                if (isLoading)
+                if (isLoading) {
                   return const Center(child: CircularProgressIndicator());
+                }
                 return ValueListenableBuilder<List<SearchedUser>>(
-                  valueListenable: _searchResults,
+                  valueListenable: searchResults,
                   builder: (context, results, child) {
-                    if (results.isEmpty)
+                    if (results.isEmpty) {
                       return const Center(child: Text('输入关键词进行搜索'));
+                    }
                     return ListView.builder(
                       itemCount: results.length,
                       itemBuilder: (context, index) {

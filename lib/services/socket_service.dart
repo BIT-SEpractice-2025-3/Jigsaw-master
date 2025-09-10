@@ -38,13 +38,11 @@ class SocketService {
   void connectAndListen(String token) {
     // ▼▼▼ 核心修正：添加连接守卫 ▼▼▼
     if (_isConnectingOrConnected) {
-      print("ℹ️ SocketService: 连接请求被阻止，因为已经连接或正在连接中。");
       return;
     }
 
     // 设置标志位，防止在异步操作完成前再次调用
     _isConnectingOrConnected = true;
-    print("🚀 SocketService: 开始连接...");
 
     // 如果之前的socket实例存在，先彻底销毁
     _socket?.dispose();
@@ -57,17 +55,9 @@ class SocketService {
     _socket!.connect();
 
     _socket!.onConnect((_) {
-      print('Socket connected: ${_socket!.id}');
       // 连接成功后，立即用token进行认证
       _socket!.emit('authenticate', {'token': token});
     });
-
-    _socket!.onDisconnect((_) => print('Socket disconnected'));
-    _socket!.onError((data) => print('Socket error: $data'));
-
-    // --- 注册自定义事件监听 ---
-    _socket!.on('authentication_success', (_) => print("Socket authentication successful!"));
-    _socket!.on('authentication_failed', (data) => print("Socket authentication failed: $data"));
 
     _socket!.on('new_match_invite', (data) => _onNewInviteController.add(data));
     _socket!.on('match_started', (data) {
@@ -97,7 +87,6 @@ class SocketService {
   Map<String, dynamic> _withToken(Map<String, dynamic> data) {
     final token = _authService.token;
     if (token == null) {
-      print("SocketService 警告: 尝试发送需要认证的事件，但用户未登录或token为空。");
       // 即使token为空也返回原始数据，让后端决定如何处理
       return data;
     }
@@ -150,7 +139,6 @@ class SocketService {
   // --- ▲▲▲ 核心修改部分结束 ▲▲▲ ---
 
   void dispose() {
-    print("Disposing SocketService...");
     _socket?.disconnect();
     _socket?.dispose();
     _isConnectingOrConnected = false;

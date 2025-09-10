@@ -1,6 +1,3 @@
-// 存档检测对话框组件
-// 用于在开始游戏前检查是否有历史存档
-
 import 'package:flutter/material.dart';
 import '../services/game_save_service.dart';
 
@@ -11,7 +8,6 @@ class SaveDetectionDialog {
     required String gameMode,
     required int difficulty,
   }) async {
-    print("asssssssssssssssssssssss");
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -28,10 +24,10 @@ class SaveDetectionDialog {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('检测到您有未完成的游戏进度：'),
-              SizedBox(height: 8),
+              const Text('检测到您有未完成的游戏进度：'),
+              const SizedBox(height: 8),
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -44,7 +40,7 @@ class SaveDetectionDialog {
                       children: [
                         Icon(Icons.games,
                             size: 16, color: Colors.blue.shade700),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
                           '游戏模式: ${gameMode == 'classic' ? '经典模式' : '大师模式'}',
                           style: TextStyle(
@@ -55,12 +51,12 @@ class SaveDetectionDialog {
                         ),
                       ],
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(Icons.star,
                             size: 16, color: Colors.amber.shade700),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
                           '难度等级: $difficulty',
                           style: TextStyle(
@@ -74,8 +70,8 @@ class SaveDetectionDialog {
                   ],
                 ),
               ),
-              SizedBox(height: 16),
-              Text(
+              const SizedBox(height: 16),
+              const Text(
                 '是否要继续之前的游戏进度？',
                 style: TextStyle(
                   fontSize: 16,
@@ -89,10 +85,10 @@ class SaveDetectionDialog {
               onPressed: () {
                 Navigator.of(context).pop(false); // 不加载存档
               },
-              child: Text('开始新游戏'),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.grey.shade700,
               ),
+              child: const Text('开始新游戏'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -102,7 +98,7 @@ class SaveDetectionDialog {
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.restore, size: 16),
@@ -127,7 +123,7 @@ class SaveDetectionDialog {
       builder: (context, snapshot) {
         if (snapshot.data == true) {
           return Container(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: Colors.green.shade100,
               borderRadius: BorderRadius.circular(10),
@@ -137,7 +133,7 @@ class SaveDetectionDialog {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.save_alt, size: 12, color: Colors.green.shade700),
-                SizedBox(width: 2),
+                const SizedBox(width: 2),
                 Text(
                   '有存档',
                   style: TextStyle(
@@ -150,7 +146,7 @@ class SaveDetectionDialog {
             ),
           );
         }
-        return SizedBox.shrink();
+        return const SizedBox.shrink();
       },
     );
   }

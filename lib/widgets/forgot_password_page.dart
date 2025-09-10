@@ -31,7 +31,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
         // 显示成功消息
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('重置密码邮件已发送到您的邮箱'),
             backgroundColor: Colors.green,
           ),
@@ -58,7 +58,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('找回密码'),
+        title: const Text('找回密码'),
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
       ),
@@ -72,7 +72,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24.0),
             child: Form(
               key: _formKey,
               child: Column(
@@ -83,7 +83,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     size: 80,
                     color: Colors.blue.shade700,
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   Text(
                     '找回密码',
                     style: TextStyle(
@@ -92,7 +92,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       color: Colors.blue.shade700,
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
                     '请输入您的邮箱地址，我们将发送重置密码链接到您的邮箱',
                     textAlign: TextAlign.center,
@@ -101,13 +101,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       color: Colors.grey.shade600,
                     ),
                   ),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: '邮箱地址',
-                      prefixIcon: Icon(Icons.email),
+                      prefixIcon: const Icon(Icons.email),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -125,7 +125,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       return null;
                     },
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -139,15 +139,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         ),
                       ),
                       child: _isLoading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text(
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
                               '发送重置邮件',
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(

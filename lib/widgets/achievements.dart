@@ -75,9 +75,7 @@ class AchievementsPage extends StatefulWidget {
           try {
             await authService.unlockAchievement(achievement.id);
             newlyCompleted.add(achievement);
-            print('自动解锁成就: ${achievement.title}');
           } catch (e) {
-            print('解锁成就失败 ${achievement.id}: $e');
           }
         }
       }
@@ -87,7 +85,6 @@ class AchievementsPage extends StatefulWidget {
         AchievementsPage._showUnlockedDialogStatic(context, newlyCompleted);
       }
     } catch (e) {
-      print('检查成就失败: $e');
     }
   }
 
@@ -102,7 +99,6 @@ class AchievementsPage extends StatefulWidget {
       // 支持多条件AND逻辑
       return _evaluateConditionGroup(condition, userStats);
     } catch (e) {
-      print('检查成就条件时出错: $e');
       return false;
     }
   }
@@ -165,7 +161,6 @@ class AchievementsPage extends StatefulWidget {
               if (actualValue == compareValue) return false;
               break;
             default:
-              print('不支持的操作符: $operator');
               return false;
           }
         }
@@ -198,7 +193,7 @@ class AchievementsPage extends StatefulWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
               Icon(
                 Icons.emoji_events,
@@ -217,20 +212,20 @@ class AchievementsPage extends StatefulWidget {
                 size: 64,
                 color: Theme.of(context).primaryColor,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 achievement.title,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(achievement.description),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 '+${achievement.rewardPoints} 积分',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.orange,
                   fontWeight: FontWeight.bold,
                 ),
@@ -240,7 +235,7 @@ class AchievementsPage extends StatefulWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('确定'),
+              child: const Text('确定'),
             ),
           ],
         ),
@@ -251,12 +246,12 @@ class AchievementsPage extends StatefulWidget {
         builder: (context) => AlertDialog(
           title: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.emoji_events,
                 color: Colors.amber,
                 size: 28,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text('解锁了 ${achievements.length} 个成就！'),
             ],
           ),
@@ -273,7 +268,7 @@ class AchievementsPage extends StatefulWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('确定'),
+              child: const Text('确定'),
             ),
           ],
         ),
@@ -365,7 +360,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
         await _loadUserAchievements();
       }
     } catch (e) {
-      print('加载成就数据失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -394,7 +388,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
       // 检查并自动解锁新完成的成就 (不显示弹窗，因为是页面初始化)
       await _checkAndUnlockAchievements(showDialog: false);
     } catch (e) {
-      print('加载用户成就失败: $e');
     }
   }
 
@@ -411,9 +404,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
           await _authService.unlockAchievement(achievement.id);
           _completedAchievements.add(achievement.id);
           newlyCompleted.add(achievement);
-          print('自动解锁成就: ${achievement.title}');
         } catch (e) {
-          print('解锁成就失败 ${achievement.id}: $e');
         }
       }
     }

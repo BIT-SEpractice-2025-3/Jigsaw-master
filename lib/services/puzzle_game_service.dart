@@ -70,7 +70,6 @@ class PuzzleGameService {
   List<MasterPieceState> masterPieces = [];
   SnapTarget? snapTarget; // 用于保存当前可吸附的目标
 
-
   // 游戏状态变化流
   final _statusController = StreamController<GameStatus>.broadcast();
   Stream<GameStatus> get statusStream => _statusController.stream;
@@ -90,12 +89,18 @@ class PuzzleGameService {
   // 新增：Master模式分数变化流
   final _masterScoreController = StreamController<int>.broadcast();
   Stream<int> get masterScoreStream => _masterScoreController.stream;
-  final _placedPiecesController = StreamController<List<PuzzlePiece?>>.broadcast();
-  final _availablePiecesController = StreamController<List<PuzzlePiece>>.broadcast();
-  final _masterPiecesController = StreamController<List<MasterPieceState>>.broadcast();
-  Stream<List<PuzzlePiece?>> get placedPiecesStream => _placedPiecesController.stream;
-  Stream<List<PuzzlePiece>> get availablePiecesStream => _availablePiecesController.stream;
-  Stream<List<MasterPieceState>> get masterPiecesStream => _masterPiecesController.stream;
+  final _placedPiecesController =
+      StreamController<List<PuzzlePiece?>>.broadcast();
+  final _availablePiecesController =
+      StreamController<List<PuzzlePiece>>.broadcast();
+  final _masterPiecesController =
+      StreamController<List<MasterPieceState>>.broadcast();
+  Stream<List<PuzzlePiece?>> get placedPiecesStream =>
+      _placedPiecesController.stream;
+  Stream<List<PuzzlePiece>> get availablePiecesStream =>
+      _availablePiecesController.stream;
+  Stream<List<MasterPieceState>> get masterPiecesStream =>
+      _masterPiecesController.stream;
   // 初始化大师模式游戏
   void initMasterGame(List<PuzzlePiece> pieces, ui.Size boardSize) {
     final random = Random();
@@ -111,10 +116,10 @@ class PuzzleGameService {
         piece: piece,
         // 在拼图区域内随机生成位置
         position: ui.Offset(
-          random.nextDouble() * boardSize.width*0.92+5,
-          random.nextDouble() * boardSize.height*0.75+35,
+          random.nextDouble() * boardSize.width * 0.92 + 5,
+          random.nextDouble() * boardSize.height * 0.75 + 35,
         ),
-        scale: 1.2/sqrt(pieces.length),
+        scale: 1.2 / sqrt(pieces.length),
         // 随机角度
         rotation: random.nextDouble() * 2 * pi,
         // 初始时，每个拼图块都在自己的组里
@@ -243,7 +248,6 @@ class PuzzleGameService {
     // 5. 清理并检查游戏是否完成
     snapTarget = null;
     _snapController.add(null);
-    print("吸附成功");
     _checkMasterGameCompletion();
     _masterPiecesController.add(masterPieces);
   }
@@ -261,8 +265,6 @@ class PuzzleGameService {
 
     _masterScore += totalScore;
     _masterScoreController.add(_masterScore);
-
-    print("吸附得分: $totalScore (基础: $baseSnapScore, 时间奖励: $timeBonus)");
   }
 
   // 新增：扣除操作分数（可选，用于错误操作惩罚）
@@ -368,9 +370,6 @@ class PuzzleGameService {
     final totalBonus = baseCompletionScore + timeBonus + efficiencyBonus;
     _masterScore += totalBonus;
     _masterScoreController.add(_masterScore);
-
-    print(
-        "完成奖励: $totalBonus (基础: $baseCompletionScore, 时间: $timeBonus, 效率: $efficiencyBonus)");
   }
 
   // 新增：重置Master模式
@@ -391,6 +390,10 @@ class PuzzleGameService {
   Future<void> initGame(List<PuzzlePiece> pieces, int difficulty) async {
     _difficulty = difficulty;
     _availablePieces = List.from(pieces);
+
+    // 随机化可用拼图块顺序，增加游戏挑战性
+    _availablePieces.shuffle();
+
     // 修正：根据难度计算正确的网格大小
     final gridSize = difficulty + 2;
     _placedPieces = List.filled(gridSize * gridSize, null);
@@ -415,13 +418,7 @@ class PuzzleGameService {
 
       _status = GameStatus.notStarted;
       _statusController.add(_status);
-
-      print(
-          '游戏安全初始化成功: ${pieces.length}个拼图块, 已放置列表长度: ${_placedPieces.length}, 可用列表长度: ${_availablePieces.length}');
-      print(
-          '列表可修改性测试: 已放置列表可修改=${_placedPieces.isNotEmpty || _placedPieces.isEmpty}, 可用列表可修改=${_availablePieces.isNotEmpty || _availablePieces.isEmpty}');
     } catch (e) {
-      print('游戏安全初始化失败: $e');
       throw Exception('游戏初始化失败: $e');
     }
   }
@@ -429,35 +426,21 @@ class PuzzleGameService {
   // 测试列表可修改性的方法
   void testListModifiability() {
     try {
-      print('=== 列表可修改性测试开始 ===');
-
       // 测试已放置列表
-      final originalPlacedLength = _placedPieces.length;
-      print('已放置列表原始长度: $originalPlacedLength');
 
       // 尝试修改已放置列表
       try {
         if (_placedPieces.isNotEmpty) {
           final temp = _placedPieces[0];
           _placedPieces[0] = temp; // 尝试赋值
-          print('✅ 已放置列表可以修改元素');
         }
-      } catch (e) {
-        print('❌ 已放置列表不能修改元素: $e');
-      }
-
-      // 测试可用列表
-      final originalAvailableLength = _availablePieces.length;
-      print('可用列表原始长度: $originalAvailableLength');
+      } catch (e) {}
 
       // 尝试修改可用列表
       try {
         _availablePieces.add(_availablePieces.first); // 尝试添加
         _availablePieces.removeLast(); // 尝试移除
-        print('✅ 可用列表可以添加和删除元素');
-      } catch (e) {
-        print('❌ 可用列表不能修改: $e');
-      }
+      } catch (e) {}
 
       // 尝试清空操作
       try {
@@ -465,15 +448,8 @@ class PuzzleGameService {
         tempList.addAll(_availablePieces);
         _availablePieces.clear();
         _availablePieces.addAll(tempList);
-        print('✅ 可用列表可以清空和重新填充');
-      } catch (e) {
-        print('❌ 可用列表不能清空: $e');
-      }
-
-      print('=== 列表可修改性测试结束 ===');
-    } catch (e) {
-      print('列表可修改性测试出错: $e');
-    }
+      } catch (e) {}
+    } catch (e) {}
   }
 
   // 开始游戏
@@ -497,7 +473,8 @@ class PuzzleGameService {
   // 简化放置拼图的逻辑，不再需要位置参数
   bool placePiece(int pieceIndex, int targetPosition) {
     // 验证参数
-    if (_status != GameStatus.inProgress && _status != GameStatus.notStarted) return false;
+    if (_status != GameStatus.inProgress && _status != GameStatus.notStarted)
+      return false;
     if (targetPosition < 0 || targetPosition >= _placedPieces.length) {
       return false;
     }
@@ -560,7 +537,9 @@ class PuzzleGameService {
     if (fromPosition < 0 ||
         fromPosition >= _placedPieces.length ||
         toPosition < 0 ||
-        toPosition >= _placedPieces.length) return;
+        toPosition >= _placedPieces.length) {
+      return;
+    }
 
     final piece = _placedPieces[fromPosition];
     // 允许交换
@@ -579,7 +558,6 @@ class PuzzleGameService {
       _status = GameStatus.completed;
       _statusController.add(_status);
       _stopTimer();
-      print("游戏完成！所有拼图块已放置。");
     }
     // ▲▲▲ BUG修复结束 ▲▲▲
   }
@@ -614,7 +592,7 @@ class PuzzleGameService {
     if (_status != GameStatus.completed) return 0;
 
     // 分数计算逻辑：基于时间、难度和完成度
-    final int baseScore = 1000; // 基础分数
+    const int baseScore = 1000; // 基础分数
     final int timePenalty = _elapsedSeconds * 10; // 时间惩罚（每秒扣10分）
     final int difficultyBonus = _difficulty * 200; // 难度奖励
 
@@ -627,7 +605,7 @@ class PuzzleGameService {
     }
 
     // 根据完成度调整分数（所有碎片都正确放置，所以是100%）
-    final double completionRate = 1.0; // 100%完成
+    const double completionRate = 1.0; // 100%完成
     finalScore = (finalScore * completionRate).round();
 
     return finalScore;
@@ -648,35 +626,22 @@ class PuzzleGameService {
   // 修复版本：恢复游戏状态（用于从存档加载）
   void restoreGameStateSafe(
       List<PuzzlePiece?> placedPieces, List<PuzzlePiece> availablePieces) {
-    print('=== 开始恢复游戏状态 ===');
-    print('需要恢复的已放置拼图块: ${placedPieces.length}个');
-    print('需要恢复的可用拼图块: ${availablePieces.length}个');
-
     // 先测试当前列表的可修改性
     testListModifiability();
 
     try {
       // 方法1：尝试直接替换列表引用
-      print('尝试方法1: 直接替换列表引用');
       _placedPieces = List<PuzzlePiece?>.from(placedPieces, growable: true);
       _availablePieces =
           List<PuzzlePiece>.from(availablePieces, growable: true);
 
       // 验证替换是否成功
-      print('替换后已放置列表长度: ${_placedPieces.length}');
-      print('替换后可用列表长度: ${_availablePieces.length}');
 
       // 通知状态更新
       _statusController.add(_status);
-
-      print('✅ 游戏状态恢复成功 (方法1)');
     } catch (e) {
-      print('❌ 方法1失败: $e');
-
       // 方法2：创建全新的可修改列表
       try {
-        print('尝试方法2: 创建全新的可修改列表');
-
         // 创建全新的列表
         final newPlacedPieces = <PuzzlePiece?>[];
         final newAvailablePieces = <PuzzlePiece>[];
@@ -690,14 +655,10 @@ class PuzzleGameService {
         _availablePieces = newAvailablePieces;
 
         _statusController.add(_status);
-        print('✅ 游戏状态恢复成功 (方法2)');
       } catch (e2) {
-        print('❌ 方法2也失败: $e2');
         throw Exception('无法恢复游戏状态，所有方法都失败了: $e2');
       }
     }
-
-    print('=== 游戏状态恢复完成 ===');
   }
 
   // 设置已用时间（用于从存档恢复）

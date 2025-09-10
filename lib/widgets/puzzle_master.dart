@@ -154,7 +154,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Center(
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _isGameRunning
                       ? Colors.green.shade100
@@ -175,7 +175,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                           ? Colors.green.shade700
                           : Colors.grey.shade600,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
                       _formatTime(_currentTime),
                       style: TextStyle(
@@ -198,25 +198,25 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: Text('重置游戏'),
-                  content: Text('确定要重置当前游戏吗？所有进度将丢失。'),
+                  title: const Text('重置游戏'),
+                  content: const Text('确定要重置当前游戏吗？所有进度将丢失。'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: Text('取消'),
+                      child: const Text('取消'),
                     ),
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
                         _resetGame();
                       },
-                      child: Text('确定'),
+                      child: const Text('确定'),
                     ),
                   ],
                 ),
               );
             },
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
             tooltip: '重置游戏',
           ),
         ],
@@ -286,7 +286,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
                 // 分数显示
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -307,7 +307,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                         color: Colors.amber.shade700,
                         size: 20,
                       ),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Text(
                         _currentScore.toString(),
                         style: TextStyle(
@@ -427,8 +427,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     final authService = AuthService();
     if (authService.isLoggedIn) {
       authService
-          .deleteSave('master', widget.difficulty)
-          .catchError((e) => print('删除服务器存档失败: $e'));
+          .deleteSave('master', widget.difficulty);
     }
 
     showDialog(
@@ -436,7 +435,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.celebration, color: Colors.amber, size: 28),
               SizedBox(width: 8),
@@ -447,10 +446,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('🎉 你已成功完成大师模式拼图！'),
-              SizedBox(height: 16),
+              const Text('🎉 你已成功完成大师模式拼图！'),
+              const SizedBox(height: 16),
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(8),
@@ -460,17 +459,17 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('⏱️ 用时:',
+                        const Text('⏱️ 用时:',
                             style: TextStyle(fontWeight: FontWeight.w500)),
                         Text(_formatTime(_currentTime),
-                            style: TextStyle(fontFamily: 'monospace')),
+                            style: const TextStyle(fontFamily: 'monospace')),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('⭐ 得分:',
+                        const Text('⭐ 得分:',
                             style: TextStyle(fontWeight: FontWeight.w500)),
                         Text(_currentScore.toString(),
                             style: TextStyle(
@@ -489,14 +488,14 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                 Navigator.of(context).pop();
                 _resetGame();
               },
-              child: Text('再来一次'),
+              child: const Text('再来一次'),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(); // 返回到上一页
               },
-              child: Text('返回'),
+              child: const Text('返回'),
             ),
             // 新增：提交分数按钮
             ElevatedButton(
@@ -509,7 +508,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
-              child: Text('提交分数'),
+              child: const Text('提交分数'),
             ),
           ],
         );
@@ -557,7 +556,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       );
     } catch (e) {
       // 错误已经在ScoreSubmissionHelper中处理，这里不需要额外处理
-      print('大师模式分数提交失败: $e');
     }
   }
 
@@ -597,7 +595,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         });
       }
     } catch (e) {
-      print('初始化游戏失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -695,7 +692,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         },
         onScaleEnd: (details) {
           _lastFocalPoint = null;
-          print(_selectedGroupId);
           if (_selectedGroupId == -1) return;
 
           // 优先处理拼图块之间的吸附
@@ -808,7 +804,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.85),
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
               ),
               child: const Icon(Icons.rotate_left,
                   color: Colors.blue, size: iconSize),
@@ -834,7 +830,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.85),
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
               ),
               child: const Icon(Icons.rotate_right,
                   color: Colors.blue, size: iconSize),
@@ -876,9 +872,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         } else if (shouldLoadSave == false) {
           try {
             await authService.deleteSave('master', widget.difficulty);
-            print('用户选择不加载，已删除服务器存档');
           } catch (e) {
-            print('删除服务器存档失败: $e');
           }
         }
       }
@@ -900,7 +894,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         _pendingPieces = pieces;
       });
     } catch (e) {
-      print('初始化新游戏失败: $e');
       // 如果初始化失败，显示错误提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -919,7 +912,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     if (now.difference(_lastSaveTime) >= _autoSaveInterval) {
       // 超过自动保存时间间隔，执行自动保存
       _lastSaveTime = now;
-      _saveGame().catchError((e) => print('Auto save failed: $e'));
     }
   }
 
@@ -949,7 +941,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         'masterPieces': currentPieces.map((p) => p.toJson()).toList(),
       };
       await authService.submitSave(saveData);
-      print('Master mode save sent to server');
     }
   }
 
@@ -985,9 +976,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       // 尝试设置恢复的状态
       try {
         _gameService.masterPieces = masterPieces;
-        print('成功恢复大师模式拼图状态: ${masterPieces.length} 个拼图块');
       } catch (e) {
-        print('无法直接设置 masterPieces，尝试其他方式: $e');
         // 如果无法直接设置，尝试通过其他方式恢复
         // 这里可能需要修改 PuzzleGameService 来支持状态恢复
       }
@@ -1004,7 +993,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       // 显示加载成功提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white, size: 20),
@@ -1018,12 +1007,11 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         );
       }
     } catch (e) {
-      print('加载服务器存档详细错误: $e');
 
       // 加载失败时显示错误提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white, size: 20),
@@ -1044,10 +1032,6 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   @override
   void dispose() {
-    // 在页面销毁时保存游戏进度
-    if (_gameService.status == GameStatus.inProgress) {
-      _saveGame().catchError((e) => print('Save on dispose failed: $e'));
-    }
     super.dispose();
   }
 }

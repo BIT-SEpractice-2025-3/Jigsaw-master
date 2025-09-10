@@ -1,7 +1,3 @@
-// 设置页面
-// ->自动提交分数
-// ->其他游戏设置
-
 import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 
@@ -89,12 +85,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // 关于
           _buildSectionHeader('关于'),
-          ListTile(
+          const ListTile(
             title: const Text('版本'),
             subtitle: const Text('1.0.0'),
             trailing: const Icon(Icons.info_outline),
           ),
-          ListTile(
+          const ListTile(
             title: const Text('开发者'),
             subtitle: const Text('拼图大师团队'),
             trailing: const Icon(Icons.people),

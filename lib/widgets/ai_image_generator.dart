@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'game_select.dart';
@@ -561,18 +560,18 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ).copyWith(
-          backgroundColor: MaterialStateProperty.resolveWith<Color>(
-            (Set<MaterialState> states) {
-              if (states.contains(MaterialState.hovered)) {
+          backgroundColor: WidgetStateProperty.resolveWith<Color>(
+            (Set<WidgetState> states) {
+              if (states.contains(WidgetState.hovered)) {
                 return Color.fromRGBO(
                     color.red, color.green, color.blue, 0.1); // 悬停时变深
               }
               return Colors.white; // 默认颜色
             },
           ),
-          elevation: MaterialStateProperty.resolveWith<double>( 
-            (Set<MaterialState> states) {
-              if (states.contains(MaterialState.hovered)) {
+          elevation: WidgetStateProperty.resolveWith<double>(
+            (Set<WidgetState> states) {
+              if (states.contains(WidgetState.hovered)) {
                 return 0; // 悬停时增加阴影
               }
               return 4; // 默认阴影

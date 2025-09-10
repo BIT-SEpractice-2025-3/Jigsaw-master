@@ -27,7 +27,6 @@ class AudioService {
       _sfxPlayers.add(AudioPlayer(playerId: 'sfx_player_$i'));
     }
     _initialized = true;
-    print('[AudioService] initialized');
     _bgmPlayer.onPlayerStateChanged.listen((state) {
       if (state == PlayerState.completed || state == PlayerState.stopped) {
         _bgmPlaying = false;
@@ -40,7 +39,6 @@ class AudioService {
   Future<void> playBgm({String assetPath = 'assets/audio/bgm.mp3'}) async {
     await _init();
     if (_bgmPlaying) {
-      print('[AudioService] bgm already playing, skip');
       return;
     }
     try {
@@ -59,12 +57,9 @@ class AudioService {
       ));
       await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
       await _bgmPlayer.setVolume(bgmVolume);
-      print('[AudioService] try play AssetSource: $assetPath');
       await _bgmPlayer.play(AssetSource(assetPath));
       _bgmPlaying = true;
-      print('[AudioService] bgm play started via AssetSource');
     } catch (e) {
-      print('[AudioService] AssetSource play failed: $e - try Bytes fallback');
       try {
         final data = await rootBundle.load(assetPath);
         final bytes = data.buffer.asUint8List();
@@ -72,9 +67,7 @@ class AudioService {
         await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
         await _bgmPlayer.setVolume(bgmVolume);
         _bgmPlaying = true;
-        print('[AudioService] bgm play started via BytesSource');
       } catch (e2) {
-        print('[AudioService] fallback bgm play failed: $e2');
       }
     }
   }
@@ -84,7 +77,6 @@ class AudioService {
       await _bgmPlayer.pause();
       _bgmPlaying = false;
     } catch (e) {
-      print('[AudioService.pauseBgm error]: $e');
     }
   }
 
@@ -93,7 +85,6 @@ class AudioService {
       await _bgmPlayer.stop();
       _bgmPlaying = false;
     } catch (e) {
-      print('[AudioService.stopBgm error]: $e');
     }
   }
 
@@ -102,7 +93,6 @@ class AudioService {
     try {
       await _bgmPlayer.setVolume(bgmVolume);
     } catch (e) {
-      print('[AudioService.setBgmVolume error]: $e');
     }
   }
 
@@ -114,11 +104,8 @@ class AudioService {
       _sfxIndex++;
       await player.stop();
       await player.setVolume(effectiveVolume);
-      print('[AudioService] try play SFX AssetSource: $assetPath');
       await player.play(AssetSource(assetPath));
-      print('[AudioService] SFX played via AssetSource');
     } catch (e) {
-      print('[AudioService] SFX AssetSource failed: $e - try Bytes fallback');
       try {
         final data = await rootBundle.load(assetPath);
         final bytes = data.buffer.asUint8List();
@@ -127,9 +114,7 @@ class AudioService {
         await player.stop();
         await player.setVolume(effectiveVolume);
         await player.play(BytesSource(bytes));
-        print('[AudioService] SFX played via BytesSource');
       } catch (e2) {
-        print('[AudioService] SFX fallback failed: $e2');
       }
     }
   }
@@ -158,7 +143,6 @@ class AudioService {
       }
       _bgmPlaying = false;
     } catch (e) {
-      print('[AudioService.dispose error]: $e');
     }
   }
 }

@@ -202,7 +202,7 @@ class PuzzleGenerateService {
     final double sign = isConvex ? 1.0 : -1.0;
 
     // 为了美观，凸起部分不占满整个边长，我们留出一些边距
-    final double bumpRatio = 0.35; // 凸起部分大约占边长的 30% (0.35 -> 0.65)
+    const double bumpRatio = 0.35; // 凸起部分大约占边长的 30% (0.35 -> 0.65)
     final double straightStart = length * bumpRatio;
     final double straightEnd = length * (1.0 - bumpRatio);
 

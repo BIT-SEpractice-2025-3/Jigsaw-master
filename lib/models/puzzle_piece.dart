@@ -1,4 +1,3 @@
-//拼图数据模型
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 

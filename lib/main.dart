@@ -1,11 +1,8 @@
-//启动应用
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'widgets/home.dart';
 import 'services/auth_service.dart';
-import 'services/audio_service.dart'; // 导入音频
 import 'package:flutter/services.dart'; // 导入系统服务包
 import 'widgets/invite_handler.dart';
-import 'package:just_audio/just_audio.dart'; // 导入音频播放包
 
 // 应用程序入口点
 void main() {

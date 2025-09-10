@@ -1,5 +1,3 @@
-// lib/models/match.dart
-
 /// 对战模型，用于实时对战流程
 class Match {
   final int id;

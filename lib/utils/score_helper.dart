@@ -47,15 +47,15 @@ class ScoreSubmissionHelper {
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text('分数提交成功！得分: $score'),
               ),
             ],
           ),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
           action: SnackBarAction(
             label: '查看排行榜',
             textColor: Colors.white,
@@ -75,15 +75,15 @@ class ScoreSubmissionHelper {
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.error, color: Colors.white),
-              SizedBox(width: 8),
+              const Icon(Icons.error, color: Colors.white),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text('分数提交失败: ${e.toString()}'),
               ),
             ],
           ),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
+          duration: const Duration(seconds: 4),
           action: SnackBarAction(
             label: '重试',
             textColor: Colors.white,
@@ -116,7 +116,7 @@ class ScoreSubmissionHelper {
       // 如果未登录，显示提示但不中断游戏流程
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: const Row(
             children: [
               Icon(Icons.info, color: Colors.white),
               SizedBox(width: 8),
@@ -126,7 +126,7 @@ class ScoreSubmissionHelper {
             ],
           ),
           backgroundColor: Colors.blue,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
           action: SnackBarAction(
             label: '去登录',
             textColor: Colors.white,
@@ -153,12 +153,10 @@ class ScoreSubmissionHelper {
         SnackBar(
           content: Text('分数已自动保存: $score'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
-      // 静默失败，不打扰用户游戏体验
-      print('自动分数提交失败: $e');
     }
   }
 

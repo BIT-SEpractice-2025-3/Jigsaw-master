@@ -1,8 +1,4 @@
-//游戏界面
-//->主页
-//->游戏界面
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import '../models/puzzle_piece.dart';
 import 'home.dart';
@@ -171,9 +167,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
             // 用户选择不加载存档，删除服务器上的存档
             try {
               await authService.deleteSave('classic', widget.difficulty);
-              print('用户选择不加载，已删除服务器存档');
             } catch (e) {
-              print('删除服务器存档失败: $e');
             }
           }
         }
@@ -227,7 +221,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
         );
       }
     } catch (e) {
-      print('加载服务器存档详细错误: $e');
       setState(() {
         _errorMessage = '加载存档失败: $e';
       });
@@ -272,19 +265,14 @@ class _PuzzlePageState extends State<PuzzlePage> {
             // 尝试放置拼图块到指定位置
             final success = _gameService.placePiece(pieceIndex, position);
             if (success) {
-              print('成功恢复拼图块: ID=$pieceId, 位置=$position');
             } else {
-              print('无法放置拼图块: ID=$pieceId, 位置=$position');
             }
           } else {
-            print('找不到可用拼图块: ID=$pieceId');
           }
         }
       }
 
-      print('拼图状态恢复完成');
     } catch (e) {
-      print('恢复拼图状态失败: $e');
       // 如果恢复失败，抛出异常让上层处理
       throw Exception('恢复游戏状态失败: $e');
     }
@@ -299,6 +287,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
       // 生成拼图碎片并获取目标图像
       final pieces =
           await _generator.generatePuzzle(imageSource, widget.difficulty);
+
+      // 随机化拼图块顺序
+      pieces.shuffle();
 
       // 获取缓存的完整图像
       _targetImage = _generator.lastLoadedImage;
@@ -322,8 +313,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
     final authService = AuthService();
     if (authService.isLoggedIn) {
       authService
-          .deleteSave('classic', widget.difficulty)
-          .catchError((e) => print('删除服务器存档失败: $e'));
+          .deleteSave('classic', widget.difficulty);
     }
 
     showDialog(
@@ -335,7 +325,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
         final time = _formatTime(_gameService.elapsedSeconds);
 
         return AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.celebration, color: Colors.amber, size: 28),
               SizedBox(width: 8),
@@ -346,10 +336,10 @@ class _PuzzlePageState extends State<PuzzlePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('🎉 你已成功完成拼图！'),
-              SizedBox(height: 16),
+              const Text('🎉 你已成功完成拼图！'),
+              const SizedBox(height: 16),
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(8),
@@ -359,16 +349,16 @@ class _PuzzlePageState extends State<PuzzlePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('⏱️ 用时:',
+                        const Text('⏱️ 用时:',
                             style: TextStyle(fontWeight: FontWeight.w500)),
-                        Text(time, style: TextStyle(fontFamily: 'monospace')),
+                        Text(time, style: const TextStyle(fontFamily: 'monospace')),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('⭐ 得分:',
+                        const Text('⭐ 得分:',
                             style: TextStyle(fontWeight: FontWeight.w500)),
                         Text(score.toString(),
                             style: TextStyle(
@@ -437,36 +427,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
     });
   }
 
-  // 保存当前游戏进度
-  Future<void> _saveCurrentGame() async {
-    try {
-      // 只有游戏进行中时才保存
-      if (_gameService.status != GameStatus.inProgress) {
-        return;
-      }
-
-      // 发送存档到服务器
-      final authService = AuthService();
-      if (authService.isLoggedIn) {
-        final saveData = {
-          'gameMode': 'classic',
-          'difficulty': widget.difficulty,
-          'elapsedSeconds': _currentTime,
-          'currentScore': _currentScore,
-          'imageSource': widget.imagePath ?? 'assets/images/default_puzzle.jpg',
-          'placedPiecesIds':
-              _gameService.placedPieces.map((p) => p?.nodeId).toList(),
-          'availablePiecesIds':
-              _gameService.availablePieces.map((p) => p.nodeId).toList(),
-        };
-        await authService.submitSave(saveData);
-        print('存档已发送到服务器');
-      }
-    } catch (e) {
-      print('静默保存游戏进度时出错: $e');
-    }
-  }
-
   // 新增：检查是否需要自动保存
   void _checkAutoSave() {
     if (_gameService.status == GameStatus.inProgress) {
@@ -508,10 +468,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
               _gameService.availablePieces.map((p) => p.nodeId).toList(),
         };
         await authService.submitSave(saveData);
-        print('存档已发送到服务器');
       }
     } catch (e) {
-      print('静默保存游戏进度时出错: $e');
     }
   }
 
@@ -539,7 +497,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
       );
     } catch (e) {
       // 错误已经在ScoreSubmissionHelper中处理，这里不需要额外处理
-      print('分数提交失败: $e');
     }
   }
 
@@ -574,7 +531,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
   void _updateRealtimeScore() {
     if (_gameService.status == GameStatus.inProgress) {
       // 实时分数计算：基础分数 - 时间惩罚 + 难度奖励
-      final int baseScore = 1000; // 基础分数
+      const int baseScore = 1000; // 基础分数
       final int timePenalty = _currentTime * 2; // 每秒扣2分（比最终分数计算更温和）
       final int difficultyBonus = widget.difficulty * 100; // 难度奖励
 
@@ -613,7 +570,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Center(
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: _isGameRunning
                       ? Colors.green.shade100
@@ -634,7 +592,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                           ? Colors.green.shade700
                           : Colors.grey.shade600,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
                       _formatTime(_currentTime),
                       style: TextStyle(
@@ -730,8 +688,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
                     // 分数显示
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
@@ -748,7 +706,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                           BoxShadow(
                             color: _getScoreColor().withOpacity(0.3),
                             blurRadius: 4,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -760,7 +718,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                             color: _getScoreColor().shade700,
                             size: 20,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
                             transitionBuilder:
@@ -779,7 +737,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
                               ),
                             ),
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Tooltip(
                             message: '实时分数：基础1000分 - 时间惩罚 - 难度奖励 + 放置奖励',
                             child: Icon(
@@ -841,9 +799,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
           Row(
             children: [
               _buildAutoSaveIndicator(), // 新增：存档状态指示器
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               _buildRestartButton(), // 新增：重新开始按钮
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               _buildGameStatusIndicator(),
             ],
           ),
@@ -855,7 +813,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
   // 新增：自动存档状态指示器
   Widget _buildAutoSaveIndicator() {
     if (_gameService.status != GameStatus.inProgress) {
-      return SizedBox.shrink();
+      return const SizedBox.shrink();
     }
 
     final now = DateTime.now();
@@ -870,7 +828,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
     if (secondsSinceLastSave < 10) {
       indicatorColor = Colors.green;
       indicatorIcon = Icons.cloud_done;
-      tooltipText = '已保存 (${secondsSinceLastSave}秒前)';
+      tooltipText = '已保存 ($secondsSinceLastSave秒前)';
     } else if (secondsSinceLastSave < 30) {
       indicatorColor = Colors.amber;
       indicatorIcon = Icons.cloud_queue;
@@ -878,13 +836,13 @@ class _PuzzlePageState extends State<PuzzlePage> {
     } else {
       indicatorColor = Colors.red;
       indicatorIcon = Icons.cloud_off;
-      tooltipText = '需要保存 (${secondsSinceLastSave}秒前)';
+      tooltipText = '需要保存 ($secondsSinceLastSave秒前)';
     }
 
     return Tooltip(
       message: tooltipText,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: indicatorColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
@@ -898,7 +856,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
               size: 14,
               color: indicatorColor,
             ),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             Text(
               '存档',
               style: TextStyle(
@@ -943,13 +901,13 @@ class _PuzzlePageState extends State<PuzzlePage> {
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.orange.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.orange, width: 1),
           ),
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(

@@ -1,5 +1,3 @@
-// lib/models/match_history.dart
-
 class MatchHistory {
   final int id;
   final int opponentId;

@@ -78,14 +78,14 @@ class _LoginPageState extends State<LoginPage> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Card(
                 elevation: 8,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Padding(
-                  padding: EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.all(32.0),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -96,7 +96,7 @@ class _LoginPageState extends State<LoginPage> {
                           size: 80,
                           color: Colors.blue.shade700,
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         Text(
                           '拼图游戏',
                           style: TextStyle(
@@ -105,13 +105,13 @@ class _LoginPageState extends State<LoginPage> {
                             color: Colors.blue.shade700,
                           ),
                         ),
-                        SizedBox(height: 32),
+                        const SizedBox(height: 32),
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: '邮箱',
-                            prefixIcon: Icon(Icons.email),
+                            prefixIcon: const Icon(Icons.email),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -127,13 +127,13 @@ class _LoginPageState extends State<LoginPage> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: '密码',
-                            prefixIcon: Icon(Icons.lock),
+                            prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
@@ -160,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
                             return null;
                           },
                         ),
-                        SizedBox(height: 24),
+                        const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -174,8 +174,8 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             child: _isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
-                                : Text(
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : const Text(
                                     '登录',
                                     style: TextStyle(
                                         fontSize: 16,
@@ -183,7 +183,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -206,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                                   context,
                                   MaterialPageRoute(
                                       builder: (context) =>
-                                          ForgotPasswordPage()),
+                                        const ForgotPasswordPage()),
                                 );
                               },
                               child: Text(

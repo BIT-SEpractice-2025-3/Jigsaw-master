@@ -39,7 +39,6 @@ class FriendService {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Friend.fromJson(json)).toList();
     } else {
-      print('Failed to load friends: ${response.body}');
       throw Exception('加载好友列表失败');
     }
   }
@@ -135,7 +134,6 @@ class FriendService {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => MatchHistory.fromJson(json)).toList();
     } else {
-      print('Failed to load match history: ${response.body}');
       throw Exception('加载对战记录失败');
     }
   }

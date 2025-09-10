@@ -16,8 +16,6 @@ class AuthService {
 
   bool get isLoggedIn {
     final result = _token != null && _currentUser != null;
-    print(
-        'AuthService: isLoggedIn = $result, user = ${_currentUser?['username']}');
     return result;
   }
 
@@ -27,13 +25,11 @@ class AuthService {
   Future<void> loadAuthData() async {
     // 这个版本使用内存存储，应用重启后需要重新登录
     // 但在应用运行期间会保持登录状态
-    print('AuthService: 使用内存存储模式');
 
     // 如果有token，验证其有效性
     if (_token != null) {
       final isValid = await validateToken(_token!);
       if (!isValid) {
-        print('AuthService: Token无效，清除数据');
         _token = null;
         _currentUser = null;
       }
@@ -44,14 +40,12 @@ class AuthService {
   void _saveAuthData(String token, Map<String, dynamic> user) {
     _token = token;
     _currentUser = user;
-    print('AuthService: 保存用户数据到内存 - ${user['username']}');
   }
 
   // 清除认证数据
   Future<void> logout() async {
     _token = null;
     _currentUser = null;
-    print('AuthService: 用户已退出登录');
   }
 
   // 用户登录
@@ -70,9 +64,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        print('登录成功，保存数据: ${result['user']}');
         _saveAuthData(result['token'], result['user']);
-        print('保存后状态: isLoggedIn=${isLoggedIn}, user=${currentUser}');
         return result;
       } else {
         final error = jsonDecode(response.body);

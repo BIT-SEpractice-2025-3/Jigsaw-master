@@ -1,5 +1,3 @@
-//自定义拼图界面
-//->主页
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
 import 'package:image_picker/image_picker.dart'; // 导入图片选择器
 import 'package:path_provider/path_provider.dart';

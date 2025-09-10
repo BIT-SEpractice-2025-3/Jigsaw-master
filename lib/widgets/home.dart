@@ -7,7 +7,7 @@ import 'login_page.dart';
 import 'ai_image_generator.dart'; // 添加AI图片生成页面的导入
 import 'achievements.dart'; // 添加成就页面的导入
 import '../services/auth_service.dart'; // 使用auth_service_simple.dart
-import '../pages/friends_page.dart'; // <-- 1. 导入我们之后会创建的好友页面
+import 'friends_page.dart'; // <-- 1. 导入我们之后会创建的好友页面
 import '../services/socket_service.dart'; // <-- 2. 导入Socket服务
 import 'setting.dart';
 import '../services/audio_service.dart';
