@@ -1,0 +1,169 @@
+{
+    "achievements": [
+        {
+            "id": "first_victory",
+            "title": "Hello, World!",
+            "description": "完成你的第一个拼图",
+            "icon": "flag",
+            "type": "count",
+            "condition": {
+                "total_games": 1
+            },
+            "reward_points": 50,
+            "category": "progress"
+        },
+        {
+            "id": "speed_king",
+            "title": "Déjà vu!",
+            "description": "在30秒内完成简单拼图",
+            "icon": "speed",
+            "type": "time",
+            "condition": {
+                "easy_under_30s": 1
+            },
+            "reward_points": 100,
+            "category": "speed"
+        },
+        {
+            "id": "lightning_fast",
+            "title": "闪电侠",
+            "description": "在15秒内完成任意拼图",
+            "icon": "flash_on",
+            "type": "time",
+            "condition": {
+                "games_under_15s": 1
+            },
+            "reward_points": 250,
+            "category": "speed"
+        },
+        {
+            "id": "marathon_runner",
+            "title": "马拉松选手",
+            "description": "单次游戏时间超过5分钟",
+            "icon": "timer",
+            "type": "time",
+            "condition": {
+                "games_over_5min": 1
+            },
+            "reward_points": 120,
+            "category": "endurance"
+        },
+        {
+            "id": "progress_star",
+            "title": "无效自律",
+            "description": "完成100个拼图，除了成就感一无所获。",
+            "icon": "trending_up",
+            "type": "count",
+            "condition": {
+                "total_games": 100
+            },
+            "reward_points": 150,
+            "category": "progress"
+        },
+        {
+            "id": "master_solver",
+            "title": "拼图大师",
+            "description": "完成困难模式拼图",
+            "icon": "emoji_events",
+            "type": "difficulty",
+            "condition": {
+                "hard_completed": 1
+            },
+            "reward_points": 300,
+            "category": "skill"
+        },
+        {
+            "id": "score_hunter",
+            "title": "战斗力…只有5？不，是一万！",
+            "description": "获得总分超过10000分",
+            "icon": "target",
+            "type": "score",
+            "condition": {
+                "total_score": 10000
+            },
+            "reward_points": 200,
+            "category": "skill"
+        },
+        {
+            "id": "social_butterfly",
+            "title": "社交达人",
+            "description": "与5个不同的好友对战",
+            "icon": "people",
+            "type": "social",
+            "condition": {
+                "unique_opponents": 5
+            },
+            "reward_points": 150,
+            "category": "social"
+        },
+        {
+            "id": "consistency_king",
+            "title": "稳定发挥",
+            "description": "连续10局游戏分数都超过1000分",
+            "icon": "trending_up",
+            "type": "advanced",
+            "condition": {
+                "high_score_games": 10
+            },
+            "reward_points": 400,
+            "category": "skill"
+        },
+        {
+            "id": "perfectionist",
+            "title": "完美主义者",
+            "description": "在困难模式下2分钟内完成拼图",
+            "icon": "star",
+            "type": "complex",
+            "condition": {
+                "hard_under_120s": 1
+            },
+            "reward_points": 500,
+            "category": "skill"
+        },
+        {
+            "id": "veteran_player",
+            "title": "资深玩家",
+            "description": "各难度都完成至少10次",
+            "icon": "emoji_events",
+            "type": "complex",
+            "condition": {
+                "and": [
+                    {
+                        "easy_completed": 10
+                    },
+                    {
+                        "medium_completed": 10
+                    },
+                    {
+                        "hard_completed": 10
+                    }
+                ]
+            },
+            "reward_points": 600,
+            "category": "progress"
+        },
+        {
+            "id": "score_range_master",
+            "title": "分数控制大师",
+            "description": "拥有1000-5000分的游戏记录且总分超过50000",
+            "icon": "target",
+            "type": "complex",
+            "condition": {
+                "and": [
+                    {
+                        "high_score_games": {
+                            ">=": 1
+                        }
+                    },
+                    {
+                        "total_score": {
+                            ">=": 50000
+                        }
+                    }
+                ]
+            },
+            "reward_points": 800,
+            "category": "skill"
+        }
+    ]
+}

@@ -70,6 +70,7 @@ class PuzzleGameService {
   List<MasterPieceState> masterPieces = [];
   SnapTarget? snapTarget; // 用于保存当前可吸附的目标
 
+
   // 游戏状态变化流
   final _statusController = StreamController<GameStatus>.broadcast();
   Stream<GameStatus> get statusStream => _statusController.stream;
@@ -89,7 +90,12 @@ class PuzzleGameService {
   // 新增：Master模式分数变化流
   final _masterScoreController = StreamController<int>.broadcast();
   Stream<int> get masterScoreStream => _masterScoreController.stream;
-
+  final _placedPiecesController = StreamController<List<PuzzlePiece?>>.broadcast();
+  final _availablePiecesController = StreamController<List<PuzzlePiece>>.broadcast();
+  final _masterPiecesController = StreamController<List<MasterPieceState>>.broadcast();
+  Stream<List<PuzzlePiece?>> get placedPiecesStream => _placedPiecesController.stream;
+  Stream<List<PuzzlePiece>> get availablePiecesStream => _availablePiecesController.stream;
+  Stream<List<MasterPieceState>> get masterPiecesStream => _masterPiecesController.stream;
   // 初始化大师模式游戏
   void initMasterGame(List<PuzzlePiece> pieces, ui.Size boardSize) {
     final random = Random();
@@ -105,11 +111,10 @@ class PuzzleGameService {
         piece: piece,
         // 在拼图区域内随机生成位置
         position: ui.Offset(
-          random.nextDouble() * boardSize.width,
-          random.nextDouble() * boardSize.height,
+          random.nextDouble() * boardSize.width*0.92+5,
+          random.nextDouble() * boardSize.height*0.75+35,
         ),
-        // 固定大小为 0.5
-        scale: 0.5,
+        scale: 1.2/sqrt(pieces.length),
         // 随机角度
         rotation: random.nextDouble() * 2 * pi,
         // 初始时，每个拼图块都在自己的组里
@@ -121,6 +126,7 @@ class PuzzleGameService {
     _status = GameStatus.inProgress;
     _statusController.add(_status);
     _startTimer();
+    _masterPiecesController.add(masterPieces);
   }
 
   // 更新大师模式中拼图块的变换
@@ -131,6 +137,7 @@ class PuzzleGameService {
       masterPieces[index].position = position;
       masterPieces[index].scale = scale;
       masterPieces[index].rotation = rotation;
+      _masterPiecesController.add(masterPieces);
     }
   }
 
@@ -238,6 +245,7 @@ class PuzzleGameService {
     _snapController.add(null);
     print("吸附成功");
     _checkMasterGameCompletion();
+    _masterPiecesController.add(masterPieces);
   }
 
   // 新增：计算吸附得分
@@ -390,6 +398,8 @@ class PuzzleGameService {
     _timerController.add(_elapsedSeconds); // 初始化时通知UI
     _status = GameStatus.notStarted;
     _statusController.add(_status);
+    _placedPiecesController.add(_placedPieces);
+    _availablePiecesController.add(_availablePieces);
   }
 
   // 修复版本：初始化游戏，确保列表可修改
@@ -524,7 +534,8 @@ class PuzzleGameService {
 
     // 检查游戏是否完成
     _checkGameCompletion();
-
+    _placedPiecesController.add(_placedPieces);
+    _availablePiecesController.add(_availablePieces);
     return true;
   }
 
@@ -561,21 +572,16 @@ class PuzzleGameService {
 
   // 检查游戏是否完成
   void _checkGameCompletion() {
-    // 检查是否所有碎片都正确放置
-    bool allPiecesCorrectlyPlaced = true;
-    for (int i = 0; i < _placedPieces.length; i++) {
-      // 如果某个位置为空，或者位置上的拼图块ID与位置索引不匹配，则未完成
-      if (_placedPieces[i] == null || _placedPieces[i]!.nodeId != i) {
-        allPiecesCorrectlyPlaced = false;
-        break;
-      }
-    }
-
-    if (allPiecesCorrectlyPlaced) {
+    // ▼▼▼ BUG修复：采用更稳健的游戏完成判断逻辑 ▼▼▼
+    // 如果待放置列表为空，说明所有拼图块都已放置，游戏完成。
+    // 这个逻辑比检查每个块的ID和位置更可靠。
+    if (_status == GameStatus.inProgress && _availablePieces.isEmpty) {
       _status = GameStatus.completed;
       _statusController.add(_status);
       _stopTimer();
+      print("游戏完成！所有拼图块已放置。");
     }
+    // ▲▲▲ BUG修复结束 ▲▲▲
   }
 
   // 开始计时
@@ -633,6 +639,9 @@ class PuzzleGameService {
     _statusController.close();
     _timerController.close();
     _snapController.close();
+    _placedPiecesController.close();
+    _availablePiecesController.close();
+    _masterPiecesController.close();
     _masterScoreController.close(); // 新增：关闭master分数流
   }
 

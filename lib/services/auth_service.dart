@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 class AuthService {
-  static const String _baseUrl = 'http://10.194.103.249:5000/api';
+  static const String _baseUrl = '${AppConfig.serverUrl}/api';
 
   String? _token;
   Map<String, dynamic>? _currentUser;
+  String? get token => _token;
 
   // 单例模式，确保全局唯一实例
   static final AuthService _instance = AuthService._internal();
@@ -341,10 +343,66 @@ class AuthService {
     }
   }
 
-  // Placeholder: Add if getToken doesn't exist
-  static Future<String?> getToken() async {
-    // Implement token retrieval, e.g., from shared preferences or secure storage
-    // For now, return a dummy token or null
-    return 'dummy-token'; // Replace with actual implementation
+  // 获取用户成就
+  Future<Map<String, dynamic>> getUserAchievements() async {
+    if (!isLoggedIn) {
+      throw Exception('请先登录');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/user/achievements'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '获取成就失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
   }
+
+  // 解锁成就
+  Future<void> unlockAchievement(String achievementId) async {
+    if (!isLoggedIn) {
+      throw Exception('请先登录');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/user/achievements'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'achievement_id': achievementId,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '解锁成就失败');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('网络连接失败，请检查服务器是否启动');
+    }
+  }
+
+  // 获取当前token（用于Socket连接等）
+  String? get currentToken => _token;
 }

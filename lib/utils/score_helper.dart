@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../widgets/achievements.dart';
 
 // 游戏结束后的分数提交工具类
 class ScoreSubmissionHelper {
@@ -37,6 +38,9 @@ class ScoreSubmissionHelper {
 
       // 关闭加载对话框
       Navigator.of(context).pop();
+
+      // 检查成就完成情况并显示弹窗
+      await AchievementsPage.checkAndUnlockAchievements(context);
 
       // 显示成功消息
       ScaffoldMessenger.of(context).showSnackBar(
@@ -139,6 +143,10 @@ class ScoreSubmissionHelper {
     try {
       // 静默提交分数（不显示加载对话框）
       await _authService.submitScore(score, timeInSeconds, difficulty);
+
+      // 检查成就完成情况但不显示弹窗（静默模式）
+      await AchievementsPage.checkAndUnlockAchievements(context,
+          showDialog: false);
 
       // 显示简短的成功提示
       ScaffoldMessenger.of(context).showSnackBar(

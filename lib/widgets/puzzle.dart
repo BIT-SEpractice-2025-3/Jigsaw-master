@@ -11,6 +11,7 @@ import '../services/puzzle_game_service.dart';
 import '../widgets/save_detection_dialog.dart';
 import '../utils/score_helper.dart';
 import '../services/auth_service.dart';
+import '../services/audio_service.dart';
 
 // 修改自定义画笔类，解决发光提示位置问题
 class PuzzlePieceHighlightPainter extends CustomPainter {
@@ -105,12 +106,19 @@ class _PuzzlePageState extends State<PuzzlePage> {
   DateTime _lastSaveTime = DateTime.now();
   static const Duration _autoSaveInterval = Duration(seconds: 30); // 每30秒自动保存
 
+  // 新增：音效播放控制
+  bool _snapPlayedDuringDrag = false;
+
   @override
   void initState() {
     super.initState();
     _gameService = PuzzleGameService();
     _generator = PuzzleGenerateService();
     _initFuture = _checkForSaveAndInitialize();
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
 
     // 监听游戏状态变化
     _gameService.statusStream.listen((status) {
@@ -307,6 +315,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
   }
 
   void _showCompletionDialog() {
+    // 播放胜利音效
+    AudioService().playSuccessSound();
+
     // 游戏完成，删除服务器存档
     final authService = AuthService();
     if (authService.isLoggedIn) {
@@ -812,17 +823,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
 
               // 下方待放置拼图区域
               Expanded(child: _buildAvailablePiecesArea()),
-
-              // 底部控制按钮
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Button_toRestart(context),
-                  ],
-                ),
-              ),
             ],
           );
         },
@@ -841,6 +841,8 @@ class _PuzzlePageState extends State<PuzzlePage> {
           Row(
             children: [
               _buildAutoSaveIndicator(), // 新增：存档状态指示器
+              SizedBox(width: 8),
+              _buildRestartButton(), // 新增：重新开始按钮
               SizedBox(width: 16),
               _buildGameStatusIndicator(),
             ],
@@ -906,6 +908,66 @@ class _PuzzlePageState extends State<PuzzlePage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // 新增：重新开始按钮
+  Widget _buildRestartButton() {
+    return Tooltip(
+      message: '重新开始游戏',
+      child: InkWell(
+        onTap: () {
+          // 显示确认对话框
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('确认重新开始'),
+              content: const Text('你确定要重新开始游戏吗？当前进度将会丢失。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _resetGame();
+                  },
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.refresh,
+                size: 14,
+                color: Colors.orange,
+              ),
+              SizedBox(width: 4),
+              Text(
+                '重新开始',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1049,44 +1111,40 @@ class _PuzzlePageState extends State<PuzzlePage> {
                   return nodeId != null &&
                       _gameService.status == GameStatus.inProgress;
                 },
+                // 替换原来的 onAccept 回调为下面代码：
                 onAccept: (nodeId) {
-                  // 修正：通过 nodeId 找到 pieceIndex
                   final pieceIndex = _gameService.availablePieces
                       .indexWhere((p) => p.nodeId == nodeId);
 
                   if (pieceIndex == -1) {
-                    // Piece not found
-                    // 重置拖动状态
                     setState(() {
                       _currentDraggingPiece = null;
                       _shouldHighlightTarget = false;
+                      _snapPlayedDuringDrag = false;
                     });
                     return;
                   }
 
-                  // 简化放置逻辑，直接尝试放置拼图块
                   if (_currentDraggingPiece != null) {
                     final targetPosition = _currentDraggingPiece!.nodeId;
 
                     if (_shouldHighlightTarget &&
                         _gameService.placedPieces[targetPosition] == null) {
-                      // 直接放置拼图块
                       final success =
                           _gameService.placePiece(pieceIndex, targetPosition);
 
                       if (success) {
-                        // 放置成功后立即更新分数
+                        //_onPiecePlaced(); // 仅放置成功时播放放置音
                         _updateRealtimeScore();
-                        // 放置成功后立即保存游戏进度
                         _saveAfterPiecePlacement();
                       }
                     }
                   }
 
-                  // 重置拖动状态
                   setState(() {
                     _currentDraggingPiece = null;
                     _shouldHighlightTarget = false;
+                    _snapPlayedDuringDrag = false;
                   });
                 },
               ),
@@ -1177,6 +1235,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
         setState(() {
           _currentDraggingPiece = piece;
           _shouldHighlightTarget = false; // 拖动开始时不立即显示高亮
+          _snapPlayedDuringDrag = false; // 重置吸附音标志
         });
       },
       // 修改拖动更新逻辑，修正距离计算
@@ -1184,14 +1243,13 @@ class _PuzzlePageState extends State<PuzzlePage> {
         if (_currentDraggingPiece != null) {
           _lastDragPosition = details.globalPosition;
 
-          // 使用拼图正方形区域的 RenderBox，将全局坐标转换为局部坐标
           final RenderBox? puzzleAreaBox =
               _puzzleAreaKey.currentContext?.findRenderObject() as RenderBox?;
           if (puzzleAreaBox == null) {
             setState(() => _shouldHighlightTarget = false);
             return;
           }
-          // 重新计算当前缩放比例以适应全屏等布局变化
+
           final size = MediaQuery.of(context).size;
           final double availableWidth = size.width - 32;
           final double availableHeight = size.height * 0.4;
@@ -1201,11 +1259,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
           final double currentScale =
               squareSize / (_targetImage?.width.toDouble() ?? 300);
 
-          // 计算拼图区域的偏移（因为拼图区域是居中的）
           final double offsetX = (puzzleAreaBox.size.width - squareSize) / 2;
           final double offsetY = (puzzleAreaBox.size.height - squareSize) / 2;
 
-          // 减去偏移和边框宽度以获取相对于内容区域的局部位置
           final localPosition = puzzleAreaBox.globalToLocal(_lastDragPosition) -
               Offset(offsetX + 2, offsetY + 2);
 
@@ -1213,7 +1269,6 @@ class _PuzzlePageState extends State<PuzzlePage> {
               _currentDraggingPiece!.position.dx * currentScale,
               _currentDraggingPiece!.position.dy * currentScale);
 
-          // 根据拼图块和拼图区的位置判定，使用矩形重叠检测
           final targetRect = Rect.fromCenter(
             center: targetCenter,
             width: _currentDraggingPiece!.image.width.toDouble() *
@@ -1234,51 +1289,38 @@ class _PuzzlePageState extends State<PuzzlePage> {
                 0.55,
           );
 
+          final bool newShouldHighlight = targetRect.overlaps(dragRect);
+          final bool oldShouldHighlight = _shouldHighlightTarget;
+
           setState(() {
-            _shouldHighlightTarget = targetRect.overlaps(dragRect);
+            _shouldHighlightTarget = newShouldHighlight;
           });
+
+          if (newShouldHighlight && !oldShouldHighlight) {
+            _onPieceSnapped();
+            _snapPlayedDuringDrag = true;
+          }
         }
       },
+      // 替换或修改 Draggable 的 onDragEnd 和 onDragCompleted：
       onDragEnd: (details) {
-        // 拖动结束重置信息
         _currentDraggingPiece = null;
         setState(() {
           _shouldHighlightTarget = false;
+          _snapPlayedDuringDrag = false;
         });
       },
       onDragCompleted: () {
         setState(() {
           _shouldHighlightTarget = false;
+          _snapPlayedDuringDrag = false;
         });
       },
     );
   }
 
-  ElevatedButton Button_toRestart(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => PuzzlePage(
-                    difficulty: widget.difficulty,
-                    imagePath: widget.imagePath,
-                  )),
-        );
-      },
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.refresh, size: 18),
-          SizedBox(width: 6),
-          Text('重新开始', style: TextStyle(fontSize: 14)),
-        ],
-      ),
-    );
+  // 新增：有一个拼图块吸附成功的事件
+  void _onPieceSnapped() {
+    AudioService().playSnapSound();
   }
 }

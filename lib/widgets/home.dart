@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart'; // 导入Flutter的材料设计库
+import 'dart:async'; // 添加Timer支持
 import 'game_select.dart';
 import 'ranking.dart'; // 使用ranking_new.dart
 import 'diy.dart';
 import 'login_page.dart';
-import 'setting.dart';
 import 'ai_image_generator.dart'; // 添加AI图片生成页面的导入
+import 'achievements.dart'; // 添加成就页面的导入
 import '../services/auth_service.dart'; // 使用auth_service_simple.dart
+import '../pages/friends_page.dart'; // <-- 1. 导入我们之后会创建的好友页面
+import '../services/socket_service.dart'; // <-- 2. 导入Socket服务
+import 'setting.dart';
+import '../services/audio_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,310 +21,514 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
+  final SocketService _socketService = SocketService();
+  bool _isUserBarExpanded = false;
+  Timer? _collapseTimer;
+
+  // 新增：悬停状态变量
+  bool _isSettingsHovered = false;
+  bool _isRankingHovered = false;
+  bool _isAchievementsHovered = false;
+  bool _isUserBarHovered = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAuthData();
+    _loadAuthDataAndConnectSocket(); // <-- 4. 调用新的初始化方法
+    final audioService = AudioService();
+    if (!audioService.bgmPlaying) {
+      audioService.playBgm();
+    }
   }
 
-  Future<void> _loadAuthData() async {
+  @override
+  void dispose() {
+    _collapseTimer?.cancel();
+    super.dispose();
+  }
+
+  // 替换原来的 _loadAuthData 方法
+  Future<void> _loadAuthDataAndConnectSocket() async {
     await _authService.loadAuthData();
+    // 检查组件是否还在树上，这是一个好习惯
+    if (mounted && _authService.isLoggedIn) {
+      // 登录成功后，使用token连接Socket并进行认证
+      _socketService.connectAndListen(_authService.currentToken!);
+    }
     if (mounted) {
       setState(() {});
     }
   }
 
-  // 刷新用户状态
+  // 替换原来的 _refreshAuthState 方法
   Future<void> _refreshAuthState() async {
-    await _authService.loadAuthData();
-    if (mounted) {
-      setState(() {});
-    }
+    await _loadAuthDataAndConnectSocket(); // 刷新时也需要重新连接socket
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: Stack(
-        children: [
-          // 背景装饰 - 拼图元素
-          _buildBackgroundPuzzleElements(context),
+      body: SingleChildScrollView(
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height,
+          child: Stack(
+            children: [
+              // 背景装饰 - 拼图元素
+              _buildBackgroundPuzzleElements(context),
 
-          // 主要内容
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 新增：用户状态栏
-                _buildUserStatusBar(),
-                const SizedBox(height: 20),
-
-                // 应用标题和图标
-                const Column(
-                  children: [
-                    Icon(
-                      Icons.extension_rounded,
-                      size: 80,
-                      color: Color(0xFF6A5ACD),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      '拼图大师',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D2B55),
-                        letterSpacing: 1.5,
-                        shadows: [
-                          Shadow(
-                            blurRadius: 4.0,
-                            color: Colors.black12,
-                            offset: Offset(2.0, 2.0),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '挑战你的空间思维与逻辑能力',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    SizedBox(height: 40),
-                  ],
-                ),
-
-                // 功能按钮区域
-                Column(
-                  children: [
-                    _buildMenuButton(
-                      context: context,
-                      icon: Icons.play_circle_fill_rounded,
-                      title: '开始游戏',
-                      subtitle: '选择难度开始挑战',
-                      color: const Color(0xFF6A5ACD),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const GameSelectionPage()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMenuButton(
-                      context: context,
-                      icon: Icons.leaderboard_rounded,
-                      title: '排行榜',
-                      subtitle: '查看最高分数记录',
-                      color: const Color(0xFFE91E63),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const RankingPage()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMenuButton(
-                      context: context,
-                      icon: Icons.photo_library_rounded,
-                      title: '自定义拼图',
-                      subtitle: '使用自己的图片创建拼图',
-                      color: const Color(0xFFFF9800),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const DiyPage()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildMenuButton(
-                      context: context,
-                      icon: Icons.settings,
-                      title: '设置',
-                      subtitle: '设置游戏应用',
-                      color: Colors.grey,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const SettingsPage()),
-                        );
-                      },
-                    ),
-                    // AI生成图片按钮
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+              // 右上角设置图标
+              Positioned(
+                top: 40,
+                right: 20,
+                child: MouseRegion(
+                  onEnter: (_) {
+                    setState(() {
+                      _isSettingsHovered = true;
+                    });
+                  },
+                  onExit: (_) {
+                    setState(() {
+                      _isSettingsHovered = false;
+                    });
+                  },
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsPage(),
                         ),
-                        onPressed: () {
-                          // 跳转到AI图片生成页面
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const AIImageGeneratorPage(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.auto_awesome,
-                            size: 20), // 可以使用Icons.auto_awesome
-                        label: const Text(
-                          'AI生成拼图图片',
+                      );
+                    },
+                    icon: Icon(
+                      Icons.settings,
+                      color: _isSettingsHovered
+                          ? const Color(0xFF6A5ACD)
+                          : Colors.grey,
+                      size: 28,
+                    ),
+                    tooltip: '设置',
+                  ),
+                ),
+              ),
+
+              // 右上角排行榜图标
+              Positioned(
+                top: 40,
+                right: 100,
+                child: MouseRegion(
+                  onEnter: (_) {
+                    setState(() {
+                      _isRankingHovered = true;
+                    });
+                  },
+                  onExit: (_) {
+                    setState(() {
+                      _isRankingHovered = false;
+                    });
+                  },
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RankingPage(),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.leaderboard_rounded,
+                      color: _isRankingHovered
+                          ? const Color(0xFFE91E63)
+                          : Colors.grey,
+                      size: 28,
+                    ),
+                    tooltip: '排行榜',
+                  ),
+                ),
+              ),
+
+              // 右上角成就图标
+              Positioned(
+                top: 40,
+                right: 60,
+                child: MouseRegion(
+                  onEnter: (_) {
+                    setState(() {
+                      _isAchievementsHovered = true;
+                    });
+                  },
+                  onExit: (_) {
+                    setState(() {
+                      _isAchievementsHovered = false;
+                    });
+                  },
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AchievementsPage(),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.emoji_events,
+                      color: _isAchievementsHovered
+                          ? const Color(0xFFFF9800)
+                          : Colors.grey,
+                      size: 28,
+                    ),
+                    tooltip: '成就',
+                  ),
+                ),
+              ),
+
+              // 主要内容
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 新增：用户状态栏
+                    // 移除，现在在左上角
+                    const SizedBox(height: 130),
+
+                    // 应用标题和图标
+                    const Column(
+                      children: [
+                        Icon(
+                          Icons.extension_rounded,
+                          size: 80,
+                          color: Color(0xFF6A5ACD),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          '拼图大师',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D2B55),
+                            letterSpacing: 1.5,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 4.0,
+                                color: Colors.black12,
+                                offset: Offset(2.0, 2.0),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        SizedBox(height: 8),
+                        Text(
+                          '挑战你的空间思维与逻辑能力',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                      ],
+                    ),
+
+                    // 功能按钮区域
+                    Column(
+                      children: [
+                        _buildMenuButton(
+                          context: context,
+                          icon: Icons.play_circle_fill_rounded,
+                          title: '开始游戏',
+                          subtitle: '选择难度开始挑战',
+                          color: const Color(0xFF6A5ACD),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const GameSelectionPage()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuButton(
+                          context: context,
+                          icon: Icons.people_alt_rounded,
+                          title: '好友对战',
+                          subtitle: '邀请好友一决高下',
+                          color: const Color(0xFF1E88E5), // 蓝色
+                          onPressed: () {
+                            if (_authService.isLoggedIn) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const FriendsPage()),
+                              );
+                            } else {
+                              // 提示用户需要登录
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(const SnackBar(
+                                content: Text('请先登录以使用好友功能'),
+                                behavior: SnackBarBehavior.floating,
+                              ));
+                              // 可选：跳转到登录页
+                              // Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginPage()));
+                            }
+                          },
+                        ),
+                        // ▲▲▲ 添加结束 ▲▲▲
+                        const SizedBox(height: 16),
+                        _buildMenuButton(
+                          context: context,
+                          icon: Icons.photo_library_rounded,
+                          title: '自定义拼图',
+                          subtitle: '使用自己的图片创建拼图',
+                          color: const Color(0xFFFF9800),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const DiyPage()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuButton(
+                          context: context,
+                          icon: Icons.auto_awesome,
+                          title: 'AI生成拼图图片',
+                          subtitle: '使用AI生成自定义图片',
+                          color: Colors.teal,
+                          onPressed: () {
+                            // 跳转到AI图片生成页面
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const AIImageGeneratorPage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const Spacer(), // 添加Spacer以推到底部
+                    // 底部版权信息
+                    const Column(
+                      children: [
+                        Text(
+                          '北京理工大学软件工程学院',
+                          style: TextStyle(
+                            color: Color(0xFF6A5ACD),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '软件工程综合实践 · 2023级',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+              ),
 
-                const SizedBox(height: 40),
-
-                // 底部版权信息
-                const Column(
-                  children: [
-                    Text(
-                      '北京理工大学软件工程学院',
-                      style: TextStyle(
-                        color: Color(0xFF6A5ACD),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '软件工程综合实践 · 2023级',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              // 左上角用户状态图标/栏
+              Positioned(
+                top: 40,
+                left: 20,
+                child: _buildUserStatusBar(),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
+  void _toggleUserBar() {
+    setState(() {
+      _isUserBarExpanded = !_isUserBarExpanded;
+    });
+
+    // 取消之前的定时器
+    _collapseTimer?.cancel();
+
+    // 如果展开状态，设置5秒后自动收起
+    if (_isUserBarExpanded) {
+      _collapseTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            _isUserBarExpanded = false;
+          });
+        }
+      });
+    }
+  }
+
   // 新增：用户状态栏
   Widget _buildUserStatusBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF6A5ACD).withOpacity(0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
+    if (!_isUserBarExpanded) {
+      // 收起状态：只显示图标
+      return MouseRegion(
+        onEnter: (_) {
+          setState(() {
+            _isUserBarHovered = true;
+          });
+        },
+        onExit: (_) {
+          setState(() {
+            _isUserBarHovered = false;
+          });
+        },
+        child: GestureDetector(
+          onTap: _toggleUserBar,
+          child: Container(
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFF6A5ACD).withOpacity(0.1),
+              color: _isUserBarHovered
+                  ? const Color(0xFF6A5ACD).withOpacity(0.1)
+                  : Colors.white.withOpacity(0.9),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: _isUserBarHovered
+                    ? const Color(0xFF6A5ACD)
+                    : const Color(0xFF6A5ACD).withOpacity(0.2),
+                width: _isUserBarHovered ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _isUserBarHovered
+                      ? Colors.black.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.05),
+                  blurRadius: _isUserBarHovered ? 12 : 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Icon(
               _authService.isLoggedIn ? Icons.person : Icons.person_outline,
-              color: const Color(0xFF6A5ACD),
-              size: 20,
+              color: _isUserBarHovered
+                  ? const Color(0xFF6A5ACD)
+                  : const Color(0xFF6A5ACD),
+              size: 24,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _authService.isLoggedIn
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '欢迎回来！',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+        ),
+      );
+    }
+
+    // 展开状态：显示完整的用户状态栏
+    return GestureDetector(
+      onTap: _toggleUserBar,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF6A5ACD).withOpacity(0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6A5ACD).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _authService.isLoggedIn ? Icons.person : Icons.person_outline,
+                color: const Color(0xFF6A5ACD),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _authService.isLoggedIn
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '欢迎回来！',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _authService.currentUser?['username'] ?? '用户',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2D2B55),
+                        Text(
+                          _authService.currentUser?['username'] ?? '用户',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D2B55),
+                          ),
                         ),
+                      ],
+                    )
+                  : const Text(
+                      '未登录 - 点击登录获得更好体验',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF2D2B55),
                       ),
-                    ],
-                  )
-                : const Text(
-                    '未登录 - 点击登录获得更好体验',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF2D2B55),
                     ),
-                  ),
-          ),
-          if (_authService.isLoggedIn)
-            TextButton(
-              onPressed: () async {
-                await _authService.logout();
-                _refreshAuthState();
-              },
-              child: const Text(
-                '退出',
-                style: TextStyle(
-                  color: Color(0xFF6A5ACD),
-                  fontSize: 12,
-                ),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                ).then((_) {
-                  // 登录后刷新状态
-                  _refreshAuthState();
-                });
-              },
-              child: const Text(
-                '登录',
-                style: TextStyle(
-                  color: Color(0xFF6A5ACD),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
-        ],
+            if (_authService.isLoggedIn)
+              TextButton(
+                onPressed: () async {
+                  await _authService.logout();
+                  _socketService.dispose(); // <-- 6. 用户登出时，断开Socket连接
+                  _refreshAuthState();
+                },
+                child: const Text(
+                  '退出',
+                  style: TextStyle(
+                    color: Color(0xFF6A5ACD),
+                    fontSize: 12,
+                  ),
+                ),
+              )
+            else
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                  ).then((_) {
+                    // 登录后刷新状态
+                    _refreshAuthState();
+                  });
+                },
+                child: const Text(
+                  '登录',
+                  style: TextStyle(
+                    color: Color(0xFF6A5ACD),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -444,21 +653,42 @@ class _HomePageState extends State<HomePage> {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return Material(
-      borderRadius: BorderRadius.circular(20),
-      elevation: 4,
-      shadowColor: color.withOpacity(0.3),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-            width: 1,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.grey[800],
+          elevation: 4,
+          shadowColor: color.withOpacity(0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: color.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        ).copyWith(
+          backgroundColor: MaterialStateProperty.resolveWith<Color>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.hovered)) {
+                return color.withOpacity(0.1); // 悬停时变深
+              }
+              return Colors.white; // 默认颜色
+            },
+          ),
+          elevation: MaterialStateProperty.resolveWith<double>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.hovered)) {
+                return 0; // 悬停时增加阴影
+              }
+              return 4; // 默认阴影
+            },
           ),
         ),
+        onPressed: onPressed,
         child: ListTile(
-          onTap: onPressed,
           leading: Container(
             width: 50,
             height: 50,
@@ -500,8 +730,7 @@ class _HomePageState extends State<HomePage> {
               size: 16,
             ),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          contentPadding: EdgeInsets.zero,
         ),
       ),
     );

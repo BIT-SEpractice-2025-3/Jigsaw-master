@@ -258,65 +258,84 @@ class GameSelectionPage extends StatelessWidget {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return Material(
-      borderRadius: BorderRadius.circular(20),
-      elevation: 4,
-      shadowColor: Color.fromRGBO(color.red, color.green, color.blue, 0.3),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.grey[800],
+        elevation: 4,
+        shadowColor: Color.fromRGBO(color.red, color.green, color.blue, 0.3),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+          side: BorderSide(
             color: Color.fromRGBO(color.red, color.green, color.blue, 0.2),
             width: 1,
           ),
         ),
-        child: ListTile(
-          onTap: onPressed,
-          leading: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Color.fromRGBO(color.red, color.green, color.blue, 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 28,
-            ),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          subtitle: Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          trailing: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: color,
-              size: 16,
-            ),
-          ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      ).copyWith(
+        backgroundColor: MaterialStateProperty.resolveWith<Color>(
+          (Set<MaterialState> states) {
+            if (states.contains(MaterialState.hovered)) {
+              return Color.fromRGBO(
+                  color.red, color.green, color.blue, 0.1); // 悬停时变深
+            }
+            return Colors.white; // 默认颜色
+          },
         ),
+        elevation: MaterialStateProperty.resolveWith<double>(
+          (Set<MaterialState> states) {
+            if (states.contains(MaterialState.hovered)) {
+              return 0; // 悬停时增加阴影
+            }
+            return 4; // 默认阴影
+          },
+        ),
+      ),
+      onPressed: onPressed,
+      child: ListTile(
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Color.fromRGBO(color.red, color.green, color.blue, 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 28,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[800],
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        trailing: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: color,
+            size: 16,
+          ),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       ),
     );
   }
