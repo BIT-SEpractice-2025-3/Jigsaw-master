@@ -986,7 +986,6 @@ class _DiyPageState extends State<DiyPage> {
 
     try {
       final savedPath = await _saveImageToAssets(_selectedImage!);
-
       setState(() {
         _savedImagePath = savedPath;
       });
@@ -1041,36 +1040,88 @@ class _DiyPageState extends State<DiyPage> {
   Future<void> _createConfigFile() async {
     if (_savedImagePath == null) return;
 
-    // 得到文件路径
-    final appDir = await getApplicationDocumentsDirectory();
-    final configDir = Directory(path.join(appDir.path, 'configs'));
-    if (!await configDir.exists()) {
-      await configDir.create(recursive: true);
-    }
+    try {
+      // 获取下载文件夹路径（更明显的保存位置）
+      Directory? downloadsDir;
 
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final configFileName = 'diyPuzzleConf$timestamp.json';
+      if (Platform.isAndroid) {
+        // Android平台使用外部存储的Downloads目录
+        downloadsDir = Directory('/storage/emulated/0/Download');
+        if (!await downloadsDir.exists()) {
+          // 如果Download不存在，使用Downloads
+          downloadsDir = Directory('/storage/emulated/0/Downloads');
+          if (!await downloadsDir.exists()) {
+            // 如果都不存在，回退到应用文档目录
+            final appDir = await getApplicationDocumentsDirectory();
+            downloadsDir = Directory(path.join(appDir.path, 'configs'));
+          }
+        }
+      } else {
+        // iOS或其他平台使用应用文档目录
+        final appDir = await getApplicationDocumentsDirectory();
+        downloadsDir = Directory(path.join(appDir.path, 'PuzzleConfigs'));
+      }
 
-    final configPath = path.join(configDir.path, configFileName);
-    final configFile = File(configPath);
+      // 确保目录存在
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
 
-    // 创建配置数据
-    final configData = {
-      'createdAt': DateTime.now().toIso8601String(),
-      'imagePath': _savedImagePath,
-      'difficulty': _mapGridSizeToDifficulty(_gridSize),
-    };
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final configFileName = 'diyPuzzleConf$timestamp.json';
 
-    await configFile.writeAsString(json.encode(configData));
+      final configPath = path.join(downloadsDir.path, configFileName);
+      final configFile = File(configPath);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('配置文件已创建\n保存路径: $configPath'),
-          backgroundColor: Colors.blue,
-          duration: const Duration(seconds: 4), // 增加显示时间以便用户看到完整路径
-        ),
-      );
+      // 创建配置数据
+      final configData = {
+        'createdAt': DateTime.now().toIso8601String(),
+        'imagePath': _savedImagePath,
+        'difficulty': _mapGridSizeToDifficulty(_gridSize),
+        'gridSize': _gridSize,
+        'mode': _selectedMode,
+      };
+
+      await configFile.writeAsString(json.encode(configData));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
+                    Text('配置文件已保存到下载文件夹',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('文件名: $configFileName',
+                    style: const TextStyle(fontSize: 12)),
+                Text('路径: ${downloadsDir.path}',
+                    style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存配置文件失败: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 

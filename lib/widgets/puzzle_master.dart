@@ -81,7 +81,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
 
   // 新增：实时存档相关
   DateTime _lastSaveTime = DateTime.now();
-  static const Duration _autoSaveInterval = Duration(seconds: 30); // 每30秒自动保存
+  static const Duration _autoSaveInterval = Duration(seconds: 1); // 每30秒自动保存
 
   // 新增：待初始化的拼图块
   List<PuzzlePiece>? _pendingPieces;
@@ -577,8 +577,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   }
 
   Future<void> _initializeGame(ui.Size boardSize,
-      [List<PuzzlePiece>? pieces]) async {
-    if (_gameInitialized) return;
+      [List<PuzzlePiece>? pieces,
+      List<MasterPieceState>? restoredPieces]) async {
+    if (_gameInitialized && restoredPieces == null) return;
 
     try {
       final effectiveImageSource =
@@ -587,7 +588,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
           await _generateService.generatePuzzle(
               effectiveImageSource, widget.difficulty);
 
-      _gameService.initMasterGame(puzzlePieces, boardSize);
+      _gameService.initMasterGame(puzzlePieces, boardSize, restoredPieces);
 
       if (mounted) {
         setState(() {
@@ -913,8 +914,9 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
   // 新增：检查自动保存
   void _checkAutoSave() {
     final now = DateTime.now();
-    if (now.difference(_lastSaveTime) >= _autoSaveInterval) {
+    if (_isGameRunning && now.difference(_lastSaveTime) >= _autoSaveInterval) {
       // 超过自动保存时间间隔，执行自动保存
+      _saveGame();
       _lastSaveTime = now;
     }
   }
@@ -959,7 +961,7 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
           effectiveImageSource, widget.difficulty);
 
       // 从存档恢复大师模式拼图块
-      final masterPieces = (saveData['masterPieces'] as List).map((data) {
+      final restoredPieces = (saveData['masterPieces'] as List).map((data) {
         final piece = pieces.firstWhere((p) => p.nodeId == data['nodeId']);
         return MasterPieceState(
           piece: piece,
@@ -975,19 +977,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
       await _initializeGame(
           ui.Size(MediaQuery.of(context).size.width,
               MediaQuery.of(context).size.height),
-          pieces);
-
-      // 尝试设置恢复的状态
-      try {
-        _gameService.masterPieces = masterPieces;
-      } catch (e) {
-        // 如果无法直接设置，尝试通过其他方式恢复
-        // 这里可能需要修改 PuzzleGameService 来支持状态恢复
-      }
+          pieces,
+          restoredPieces); // 传递恢复的拼图块
 
       setState(() {
-        _gameInitialized = true;
-        _isGameRunning = true;
         _currentScore = saveData['currentScore'];
         _currentTime = saveData['elapsedSeconds'];
       });

@@ -102,7 +102,8 @@ class PuzzleGameService {
   Stream<List<MasterPieceState>> get masterPiecesStream =>
       _masterPiecesController.stream;
   // 初始化大师模式游戏
-  void initMasterGame(List<PuzzlePiece> pieces, ui.Size boardSize) {
+  void initMasterGame(List<PuzzlePiece> pieces, ui.Size boardSize,
+      [List<MasterPieceState>? restoredPieces]) {
     final random = Random();
     masterPieces.clear();
     _masterScore = 0; // 重置分数
@@ -110,28 +111,35 @@ class PuzzleGameService {
     _masterScoreController.add(_masterScore);
     _timerController.add(_elapsedSeconds);
 
-    // 根据原图大小和画布大小计算缩放比例
-    final double originalImageSize = pieces.isNotEmpty
-        ? pieces.first.pieceSize * sqrt(pieces.length)
-        : 400.0;
-    final double targetScale =
-        min(boardSize.width, boardSize.height) * 0.6 / originalImageSize;
+    if (restoredPieces != null) {
+      // 如果提供了恢复的拼图块，直接使用它们
+      masterPieces.addAll(restoredPieces);
+    } else {
+      // 否则，随机生成位置
+      // 根据原图大小和画布大小计算缩放比例
+      final double originalImageSize = pieces.isNotEmpty
+          ? pieces.first.pieceSize * sqrt(pieces.length)
+          : 400.0;
+      final double targetScale =
+          min(boardSize.width, boardSize.height) * 0.6 / originalImageSize;
 
-    for (int i = 0; i < pieces.length; i++) {
-      final piece = pieces[i];
-      masterPieces.add(MasterPieceState(
-        piece: piece,
-        // 在拼图区域内随机生成位置
-        position: ui.Offset(
-          random.nextDouble() * boardSize.width * 0.92 + 5,
-          random.nextDouble() * boardSize.height * 0.75 + 35,
-        ),
-        scale: targetScale,
-        // 随机角度
-        rotation: random.nextDouble() * 2 * pi,
-        // 初始时，每个拼图块都在自己的组里
-        group: i,
-      ));
+      for (int i = 0; i < pieces.length; i++) {
+        final piece = pieces[i];
+        masterPieces.add(MasterPieceState(
+          piece: piece,
+          // 在拼图区域内随机生成位置
+          position: ui.Offset(
+            random.nextDouble() * boardSize.width * 0.8 + boardSize.width * 0.1,
+            random.nextDouble() * boardSize.height * 0.8 +
+                boardSize.height * 0.1,
+          ),
+          scale: targetScale,
+          // 随机角度
+          rotation: random.nextDouble() * 2 * pi,
+          // 初始时，每个拼图块都在自己的组里
+          group: i,
+        ));
+      }
     }
 
     // 启动计时器

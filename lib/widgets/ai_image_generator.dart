@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'game_select.dart';
 import 'package:path/path.dart' as path;
+import 'package:http/http.dart' as http;
 
 class AIImageGeneratorPage extends StatefulWidget {
   const AIImageGeneratorPage({super.key});
@@ -62,58 +64,58 @@ class _AIImageGeneratorPageState extends State<AIImageGeneratorPage> {
     });
 
     try {
-      // const String path =
-      //     "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image";
+      const String path =
+          "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image";
+      const String _apiKey='sk-UrD1UVGiM0D0rHQeyZfNgiYzoKACNStb27cdHDVPflUzmyqK';
+      final Map<String, String> headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $_apiKey',
+        'Content-Type': 'application/json',
+      };
 
-      // final Map<String, String> headers = {
-      //   'Accept': 'application/json',
-      //   'Authorization': 'Bearer $_apiKey',
-      //   'Content-Type': 'application/json',
-      // };
+      final Map<String, dynamic> body = {
+        'steps': 40,
+        'width': 1024,
+        'height': 1024,
+        'seed': 0,
+        'cfg_scale': 5,
+        'samples': 1,
+        'text_prompts': [
+          {'text': _promptController.text, 'weight': 1},
+          if (_negativePromptController.text.isNotEmpty)
+            {'text': _negativePromptController.text, 'weight': -1}
+        ],
+      };
 
-      // final Map<String, dynamic> body = {
-      //   'steps': 40,
-      //   'width': 1024,
-      //   'height': 1024,
-      //   'seed': 0,
-      //   'cfg_scale': 5,
-      //   'samples': 1,
-      //   'text_prompts': [
-      //     {'text': _promptController.text, 'weight': 1},
-      //     if (_negativePromptController.text.isNotEmpty)
-      //       {'text': _negativePromptController.text, 'weight': -1}
-      //   ],
-      // };
+      final response = await http.post(
+        Uri.parse(path),
+        headers: headers,
+        body: json.encode(body),
+      );
 
-      // final response = await http.post(
-      //   Uri.parse(path),
-      //   headers: headers,
-      //   body: json.encode(body),
-      // );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
 
-      // if (response.statusCode == 200) {
-      //   final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['artifacts'] != null &&
+            responseData['artifacts'].isNotEmpty) {
+          final String base64Image = responseData['artifacts'][0]['base64'];
+          final Uint8List bytes = base64.decode(base64Image);
 
-      //   if (responseData['artifacts'] != null &&
-      //       responseData['artifacts'].isNotEmpty) {
-      //     final String base64Image = responseData['artifacts'][0]['base64'];
-      //     final Uint8List bytes = base64.decode(base64Image);
-
-      //     setState(() {
-      //       _generatedImageBytes = bytes;
-      //     });
-      //   } else {
-      //     setState(() {
-      //       _errorMessage = "未生成图片，请重试";
-      //     });
-      //   }
-      // } else {
-      //   setState(() {
-      //     _errorMessage =
-      //         "API调用失败 (${response.statusCode}): ${response.reasonPhrase}";
-      //   });
-      // }
-      _loadDefaultImage();
+          setState(() {
+            _generatedImageBytes = bytes;
+          });
+        } else {
+          setState(() {
+            _errorMessage = "未生成图片，请重试";
+          });
+        }
+      } else {
+        setState(() {
+          _errorMessage =
+              "API调用失败 (${response.statusCode}): ${response.reasonPhrase}";
+        });
+      }
+      // _loadDefaultImage();
     } catch (e) {
       setState(() {
         _errorMessage = "发生错误: $e";
