@@ -105,6 +105,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
   // 新增：音效播放控制
   bool _snapPlayedDuringDrag = false;
 
+  // 新增：步数计数器
+  int _moveCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -431,6 +434,7 @@ class _PuzzlePageState extends State<PuzzlePage> {
       _initFuture = _initializeGame();
       _currentTime = 0;
       _currentScore = 0; // 重置分数
+      _moveCount = 0; // 新增：重置步数
       _isGameRunning = false;
       _lastSaveTime = DateTime.now(); // 重置存档时间
     });
@@ -688,6 +692,54 @@ class _PuzzlePageState extends State<PuzzlePage> {
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 新增：步数显示
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: Colors.blue.shade300, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.swap_horiz,
+                            color: Colors.blue.shade700,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _moveCount.toString(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Tooltip(
+                            message: '移动步数：每次成功放置拼图块的次数',
+                            child: Icon(
+                              Icons.info_outline,
+                              size: 14,
+                              color: Colors.blue.shade600,
                             ),
                           ),
                         ],
@@ -1100,7 +1152,9 @@ class _PuzzlePageState extends State<PuzzlePage> {
                           _gameService.placePiece(pieceIndex, targetPosition);
 
                       if (success) {
-                        //_onPiecePlaced(); // 仅放置成功时播放放置音
+                        setState(() {
+                          _moveCount++; // 新增：增加步数
+                        });
                         _updateRealtimeScore();
                         _saveAfterPiecePlacement();
                       }
