@@ -352,6 +352,80 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
                       });
                     }
                   },
+                  onScaleStart: (details) {
+                    if (_selectedGroupId != -1) {
+                      _lastFocalPoint = details.focalPoint;
+                    }
+                  },
+                  onScaleUpdate: (details) {
+                    if (_selectedGroupId == -1 || _lastFocalPoint == null)
+                      return;
+
+                    final focalPointDelta =
+                        details.focalPoint - _lastFocalPoint!;
+                    _lastFocalPoint = details.focalPoint;
+
+                    setState(() {
+                      final groupID = _selectedGroupId;
+                      final groupPieces = _gameService.masterPieces
+                          .where((p) => p.group == groupID)
+                          .toList();
+
+                      // --- 分组平移 ---
+                      for (var p in groupPieces) {
+                        p.position += focalPointDelta;
+                      }
+
+                      // --- 分组旋转 ---
+                      if (details.rotation != 0.0) {
+                        final rotationDelta = details.rotation * 0.04;
+                        _rotateGroup(groupID, rotationDelta);
+                      }
+
+                      _gameService
+                          .checkForSnapping(groupPieces.first.piece.nodeId);
+                    });
+                  },
+                  onScaleEnd: (details) {
+                    _lastFocalPoint = null;
+                    if (_selectedGroupId == -1) return;
+
+                    final groupPieces = _gameService.masterPieces
+                        .where((p) => p.group == _selectedGroupId)
+                        .toList();
+                    if (groupPieces.isEmpty) return;
+
+                    // 优先处理拼图块之间的吸附
+                    if (_snapTarget != null &&
+                        _snapTarget!.draggedPieceId ==
+                            groupPieces.first.piece.nodeId) {
+                      setState(() {
+                        _gameService.snapPieces();
+                      });
+                      // 播放吸附音效
+                      AudioService().playSnapSound();
+                    } else {
+                      // 如果没有发生吸附，则执行角度对齐
+                      setState(() {
+                        final groupID = _selectedGroupId;
+                        var currentRotation =
+                            groupPieces.first.rotation; // 使用组中第一个块的旋转作为基准
+                        const baseAngle = pi / 4; // 45度
+
+                        // 计算最接近的45度倍数角度
+                        final snappedRotation =
+                            (currentRotation / baseAngle).round() * baseAngle;
+
+                        // 计算需要修正的角度差值
+                        final rotationDelta = snappedRotation - currentRotation;
+
+                        // 如果角度差很小，则无需旋转，避免不必要的重绘
+                        if (rotationDelta.abs() > 0.0001) {
+                          _rotateGroup(groupID, rotationDelta);
+                        }
+                      });
+                    }
+                  },
                   child: Container(
                     width: boardSize.width,
                     height: boardSize.height,
@@ -638,8 +712,11 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         isSelected: _selectedGroupId == pieceState.group,
         snapTarget: _snapTarget,
       ),
-      size: piece.bounds.size * 100,
+      size: piece.bounds.size * 10000,
     );
+
+    // 新增：定义触摸区域扩展大小
+    const touchTargetPadding = 50.0;
 
     return Transform(
       transform: Matrix4.identity()
@@ -648,85 +725,24 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
         ..scale(pieceState.scale)
         ..translate(-piece.pivot.dx, -piece.pivot.dy),
       child: GestureDetector(
+        // 移除：hitTestBehavior 参数以修复兼容性错误（默认行为通常足够）
         onTapDown: (details) {
           setState(() {
             // 当被点击时，选中整个分组
-            currentRotation = pieceState.rotation;
             _bringGroupToFront(pieceState.group);
             _selectedGroupId = pieceState.group;
           });
         },
-        onScaleStart: (details) {
-          // 如果手势在一个拼图块上开始，则选中其所在的分组
-          setState(() {
-            currentRotation = pieceState.rotation;
-            _bringGroupToFront(pieceState.group);
-            _selectedGroupId = pieceState.group;
-          });
-          _lastFocalPoint = details.focalPoint;
-        },
-        onScaleUpdate: (details) {
-          if (_selectedGroupId == -1) return;
-          if (_lastFocalPoint == null) return;
-
-          final focalPointDelta = details.focalPoint - _lastFocalPoint!;
-          _lastFocalPoint = details.focalPoint;
-
-          setState(() {
-            final groupID = _selectedGroupId;
-            final groupPieces = _gameService.masterPieces
-                .where((p) => p.group == groupID)
-                .toList();
-
-            // --- 分组平移 ---
-            for (var p in groupPieces) {
-              p.position += focalPointDelta;
-            }
-
-            // --- 分组旋转 ---
-            if (details.rotation != 0.0) {
-              final rotationDelta = details.rotation * 0.04;
-              _rotateGroup(groupID, rotationDelta);
-            }
-
-            _gameService.checkForSnapping(pieceState.piece.nodeId);
-          });
-        },
-        onScaleEnd: (details) {
-          _lastFocalPoint = null;
-          if (_selectedGroupId == -1) return;
-
-          // 优先处理拼图块之间的吸附
-          if (_snapTarget != null &&
-              _snapTarget!.draggedPieceId == pieceState.piece.nodeId) {
-            setState(() {
-              _gameService.snapPieces();
-            });
-            // 播放吸附音效
-            AudioService().playSnapSound();
-          } else {
-            // 如果没有发生吸附，则执行角度对齐
-            setState(() {
-              final groupID = _selectedGroupId;
-              // final currentRotation = pieceState.rotation;
-              const baseAngle = pi / 4; // 45度
-
-              // 计算最接近的45度倍数角度
-              final snappedRotation =
-                  (currentRotation / baseAngle).round() * baseAngle;
-
-              // 计算需要修正的角度差值
-              final rotationDelta = snappedRotation - currentRotation;
-
-              // 如果角度差很小，则无需旋转，避免不必要的重绘
-              if (rotationDelta.abs() > 0.0001) {
-                _rotateGroup(groupID, rotationDelta);
-              }
-            });
-          }
-        },
-        // 子组件现在只有拼图块本身，不再包含旋转控件
-        child: pieceWidget,
+        // 移除：onScaleStart，移至全屏手势
+        // 移除：onScaleUpdate 和 onScaleEnd，移至全屏手势
+        // 修改：用 Container 包裹 pieceWidget 以扩大触摸区域
+        child: Container(
+          width: piece.bounds.size.width + 2 * touchTargetPadding,
+          height: piece.bounds.size.height + 2 * touchTargetPadding,
+          color: Colors.transparent,
+          alignment: Alignment.center,
+          child: pieceWidget,
+        ),
       ),
     );
   }
@@ -778,12 +794,10 @@ class _PuzzleMasterPageState extends State<PuzzleMasterPage> {
     // 得到最终的视觉边界矩形
     final groupBounds = Rect.fromLTRB(minX, minY, maxX, maxY);
 
-    // --- 步骤 2: 简化定位逻辑 ---
-    // 直接使用边界框的角点来定位按钮，不再计算半径和角度
-
-    const iconSize = 32.0;
-    const touchTargetSize = 48.0;
-    const offset = touchTargetSize / 2; // 偏移量，使得按钮的中心点对齐到角点
+    // --- 步骤 2: 增大触摸目标大小以改善手机手势判定 ---
+    const iconSize = 32.0; // 增大图标大小
+    const touchTargetSize = 48.0; // 增大触摸目标大小从48.0到64.0
+    const offset = touchTargetSize / 2; // 调整偏移量
 
     return Stack(
       fit: StackFit.expand,
